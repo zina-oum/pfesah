@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vérification Ticket — BUS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+* { font-family: system-ui, sans-serif; }
+body { background: #f1f5f9; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; }
+</style>
+</head>
+<body>
+
+<div class="w-full max-w-sm">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3 mb-4 pt-4">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow">
+            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+            </svg>
+        </div>
+        <div>
+            <div class="font-bold text-gray-800 text-lg">BUS Transport</div>
+            <div class="text-xs text-gray-500">Vérification de ticket</div>
+        </div>
+    </div>
+
+    <!-- Card résultat -->
+    <div id="card" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <!-- Chargement -->
+        <div id="stLoading" class="p-8 text-center text-gray-400">
+            <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+            Vérification en cours...
+        </div>
+
+        <!-- Valide -->
+        <div id="stValid" class="hidden">
+            <div class="bg-green-500 px-6 py-5">
+                <div class="flex items-center gap-3">
+                    <svg class="w-8 h-8 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <div>
+                        <div class="text-white font-bold text-lg">Ticket valide</div>
+                        <div class="text-green-100 text-sm" id="resTicketNum">--</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 space-y-3">
+                <!-- Étudiant -->
+                <div class="flex items-center gap-3 pb-3 border-b border-gray-100">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600" id="resInitials">?</div>
+                    <div>
+                        <div class="font-bold text-gray-800 text-base" id="resNom">--</div>
+                        <div class="text-xs text-gray-500" id="resCode">--</div>
+                    </div>
+                </div>
+                <!-- Infos voyage -->
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-gray-50 rounded-xl p-3">
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide">Ligne</div>
+                        <div class="font-bold text-gray-800 mt-0.5" id="resLigne">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-3">
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide">Heure résa</div>
+                        <div class="font-bold text-gray-800 mt-0.5" id="resHeure">--</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-3 col-span-2">
+                        <div class="text-xs text-gray-400 font-semibold uppercase tracking-wide">Arrêt de descente</div>
+                        <div class="font-bold text-gray-800 mt-0.5" id="resArret">Non précisé</div>
+                    </div>
+                </div>
+                <!-- Bouton valider -->
+                <button id="btnValider" onclick="validerTicket()" class="w-full py-4 bg-green-600 text-white rounded-xl font-bold text-base hover:bg-green-700 active:bg-green-800 transition mt-1">
+                    ✓ Valider — Passager à bord
+                </button>
+            </div>
+        </div>
+
+        <!-- Déjà utilisé -->
+        <div id="stUsed" class="hidden">
+            <div class="bg-orange-500 px-6 py-5">
+                <div class="flex items-center gap-3">
+                    <svg class="w-8 h-8 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    <div>
+                        <div class="text-white font-bold text-lg">Ticket déjà utilisé</div>
+                        <div class="text-orange-100 text-sm">Ce ticket a déjà été validé</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 text-center text-gray-500 text-sm">
+                Ce QR code a déjà été scanné et validé. Il ne peut pas être réutilisé.
+            </div>
+        </div>
+
+        <!-- Invalide / Expiré -->
+        <div id="stInvalid" class="hidden">
+            <div class="bg-red-500 px-6 py-5">
+                <div class="flex items-center gap-3">
+                    <svg class="w-8 h-8 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    <div>
+                        <div class="text-white font-bold text-lg">Ticket invalide</div>
+                        <div class="text-red-100 text-sm" id="stInvalidMsg">--</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 text-center text-gray-500 text-sm">
+                Refuser l'accès à bord ou contacter l'administration.
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-xs text-gray-400 mt-4">BUS Transport · Vérification automatique</p>
+</div>
+
+<script>
+const API = '../backend/verify_reservation.php';
+const params = new URLSearchParams(window.location.search);
+const resId  = parseInt(params.get('r') || '0');
+
+let _resId = resId;
+
+function show(id) {
+    ['stLoading','stValid','stUsed','stInvalid'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+}
+
+async function verify() {
+    if (!resId) { show('stInvalid'); document.getElementById('stInvalidMsg').textContent = 'Lien invalide'; return; }
+    try {
+        const res = await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservation_id: resId })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const r = data.reservation;
+            const nom = `${r.user_prenom || ''} ${r.user_nom || ''}`.trim();
+            const initials = nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            document.getElementById('resInitials').textContent   = initials || '?';
+            document.getElementById('resNom').textContent        = nom || '--';
+            document.getElementById('resCode').textContent       = r.code_etudiant || r.user_email || '';
+            document.getElementById('resLigne').textContent      = `${r.ligne_numero} — ${r.ligne_nom}`;
+            document.getElementById('resHeure').textContent      = (r.heure_reservation || '--').slice(0, 5);
+            document.getElementById('resArret').textContent      = r.arret_descente || 'Non précisé';
+            document.getElementById('resTicketNum').textContent  = 'BUS-' + String(r.id).padStart(6, '0');
+            show('stValid');
+        } else if (data.message?.toLowerCase().includes('déjà utilisé') || data.message?.toLowerCase().includes('deja utilise')) {
+            show('stUsed');
+        } else {
+            show('stInvalid');
+            document.getElementById('stInvalidMsg').textContent = data.message || 'Ticket invalide';
+        }
+    } catch(e) {
+        show('stInvalid');
+        document.getElementById('stInvalidMsg').textContent = 'Erreur de connexion';
+    }
+}
+
+async function validerTicket() {
+    const btn = document.getElementById('btnValider');
+    btn.disabled = true; btn.textContent = 'Validation...';
+    try {
+        const res = await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reservation_id: _resId, mark_used: true })
+        });
+        const data = await res.json();
+        if (data.success || data.marked_used) {
+            btn.className = 'w-full py-4 bg-gray-200 text-gray-600 rounded-xl font-bold text-base cursor-default';
+            btn.textContent = '✓ Validé — Bon voyage !';
+            // Ajouter badge validé
+            const badge = document.createElement('div');
+            badge.className = 'mt-2 text-center text-green-600 font-semibold text-sm';
+            badge.textContent = 'Passager accepté à bord';
+            btn.parentNode.appendChild(badge);
+        } else {
+            btn.disabled = false; btn.textContent = '✓ Valider — Passager à bord';
+            alert(data.message || 'Erreur');
+        }
+    } catch(e) {
+        btn.disabled = false; btn.textContent = '✓ Valider — Passager à bord';
+    }
+}
+
+verify();
+</script>
+</body>
+</html>

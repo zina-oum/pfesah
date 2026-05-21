@@ -1,0 +1,56 @@
+# ============================================
+# Données capteurs STM32 - Bus Transport
+# Format: auto-détecté (JSON, CSV, Key=Value, NMEA)
+# 8 bus (lignes 1-9)
+# ============================================
+
+# ---- Format JSON ----
+{"bus_id":1,"lat":36.7538,"lng":3.0588,"speed":35.0,"accel":0.5,"temp":25.3,"engine":1,"service":1,"seats":28,"dir":"aller","km":125.5}
+{"bus_id":2,"lat":36.7600,"lng":3.0500,"speed":0.0,"accel":0.0,"temp":22.1,"engine":0,"service":0,"seats":35,"dir":"aller","km":98.3}
+{"bus_id":3,"lat":36.7720,"lng":3.0380,"speed":45.0,"accel":0.8,"temp":27.5,"engine":1,"service":1,"seats":18,"dir":"retour","km":210.7}
+{"bus_id":4,"lat":36.7402,"lng":3.0800,"speed":19.0,"accel":0.1,"temp":24.0,"engine":1,"service":1,"seats":10,"dir":"aller","km":45.2}
+{"bus_id":5,"lat":36.7602,"lng":3.0400,"speed":17.0,"accel":0.2,"temp":23.5,"engine":1,"service":1,"seats":20,"dir":"aller","km":78.9}
+{"bus_id":6,"lat":36.7500,"lng":3.0302,"speed":17.0,"accel":0.1,"temp":26.0,"engine":1,"service":1,"seats":25,"dir":"aller","km":112.4}
+{"bus_id":7,"lat":36.7800,"lng":3.0697,"speed":10.0,"accel":0.0,"temp":21.8,"engine":1,"service":1,"seats":22,"dir":"aller","km":56.7}
+{"bus_id":8,"lat":36.7451,"lng":2.9527,"speed":3.0,"accel":0.0,"temp":20.5,"engine":0,"service":0,"seats":18,"dir":"aller","km":200.1}
+
+# ---- Format CSV (séparateur ;) ----
+bus_id;lat;lng;speed;accel;temp;engine;service;seats;dir;km
+1;36.7545;3.0590;36.2;0.4;25.4;1;1;27;aller;126.0
+2;36.7602;3.0498;5.0;0.1;22.0;1;1;34;aller;99.1
+3;36.7705;3.0395;42.1;0.6;27.8;1;1;17;retour;211.5
+4;36.7405;3.0805;21.0;0.2;24.2;1;1;9;aller;46.0
+5;36.7608;3.0405;18.5;0.3;23.8;1;1;19;aller;79.5
+6;36.7503;3.0305;16.0;0.2;26.2;1;1;24;aller;113.0
+7;36.7805;3.0700;12.0;0.1;22.0;1;1;21;aller;57.2
+8;36.7455;2.9523;4.5;0.1;20.8;0;0;18;aller;200.8
+
+# ---- Format Key=Value ----
+bus=1 lat=36.7550 lng=3.0592 speed=37.5 accel=0.3 temp=25.6 engine=1 service=1 seats=27 dir=aller km=126.5
+bus=2 lat=36.7605 lng=3.0495 speed=12.0 accel=0.2 temp=22.3 engine=1 service=1 seats=33 dir=aller km=99.8
+bus=3 lat=36.7710 lng=3.0390 speed=48.0 accel=0.7 temp=28.0 engine=1 service=1 seats=16 dir=retour km=212.0
+bus=4 lat=36.7410 lng=3.0810 speed=22.0 accel=0.3 temp=24.5 engine=1 service=1 seats=8 dir=aller km=46.8
+bus=5 lat=36.7612 lng=3.0410 speed=20.0 accel=0.4 temp=24.0 engine=1 service=1 seats=18 dir=aller km=80.2
+bus=6 lat=36.7508 lng=3.0310 speed=15.0 accel=0.1 temp=26.5 engine=1 service=1 seats=23 dir=aller km=113.8
+bus=7 lat=36.7810 lng=3.0705 speed=13.0 accel=0.2 temp=22.2 engine=1 service=1 seats=20 dir=aller km=58.0
+bus=8 lat=36.7460 lng=2.9520 speed=5.0 accel=0.0 temp=21.0 engine=0 service=0 seats=18 dir=aller km=201.2
+
+# ---- Format NMEA-like ----
+$BUS,1,36.7555,3.0595,38.0,0.5,25.7,1,1,27,aller,126.8*FF
+$BUS,2,36.7610,3.0492,18.5,0.3,22.5,1,1,32,aller,100.2*FE
+$BUS,3,36.7715,3.0385,50.2,0.9,28.2,1,1,15,retour,212.5*FD
+$BUS,4,36.7415,3.0815,23.0,0.4,24.8,1,1,7,aller,47.2*FC
+$BUS,5,36.7618,3.0415,21.0,0.5,24.2,1,1,17,aller,81.0*FB
+$BUS,6,36.7510,3.0315,14.0,0.2,26.8,1,1,22,aller,114.5*FA
+$BUS,7,36.7815,3.0710,14.0,0.3,22.5,1,1,19,aller,58.8*F9
+$BUS,8,36.7465,2.9515,6.0,0.1,21.2,0,0,18,aller,201.8*F8
+
+# ---- Données avec places libres et direction (dernière lecture) ----
+{"bus_id":1,"lat":36.7560,"lng":3.0598,"speed":40.0,"accel":0.6,"temp":25.8,"engine":1,"service":1,"seats":26,"dir":"aller","km":127.3}
+{"bus_id":2,"lat":36.7615,"lng":3.0488,"speed":22.0,"accel":0.4,"temp":22.7,"engine":1,"service":1,"seats":31,"dir":"aller","km":101.0}
+{"bus_id":3,"lat":36.7720,"lng":3.0380,"speed":52.5,"accel":1.0,"temp":28.5,"engine":1,"service":1,"seats":14,"dir":"retour","km":213.2}
+{"bus_id":4,"lat":36.7420,"lng":3.0820,"speed":25.0,"accel":0.5,"temp":25.0,"engine":1,"service":1,"seats":6,"dir":"aller","km":48.0}
+{"bus_id":5,"lat":36.7620,"lng":3.0420,"speed":22.0,"accel":0.6,"temp":24.5,"engine":1,"service":1,"seats":16,"dir":"aller","km":82.0}
+{"bus_id":6,"lat":36.7515,"lng":3.0320,"speed":13.0,"accel":0.2,"temp":27.0,"engine":1,"service":1,"seats":21,"dir":"aller","km":115.0}
+{"bus_id":7,"lat":36.7820,"lng":3.0715,"speed":15.0,"accel":0.3,"temp":22.8,"engine":1,"service":1,"seats":18,"dir":"aller","km":59.5}
+{"bus_id":8,"lat":36.7470,"lng":2.9510,"speed":6.0,"accel":0.0,"temp":21.5,"engine":0,"service":0,"seats":18,"dir":"aller","km":202.5}

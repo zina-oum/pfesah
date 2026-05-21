@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche - BUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <script>const mapboxgl = maplibregl;</script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+        .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(10,22,40,0.95); }
+        .dark { color: #e2e8f0; background: #0a1628 !important; }
+        .dark .text-gray-800 { color: #e2e8f0; }
+        .dark .text-gray-700 { color: #cbd5e1; }
+        .dark .text-gray-600 { color: #94a3b8; }
+        .dark .text-gray-500 { color: #64748b; }
+        .dark .bg-gray-50 { background: #0f2942; }
+        .dark .bg-gray-100 { background: #1a3a5c; }
+        .dark .border-gray-200 { border-color: #1a3a5c; }
+        .dark input, .dark select, .dark textarea { background: #0f2942; border-color: #1a3a5c; color: #e2e8f0; }
+        #map { height: 420px; border-radius: 0.75rem; background: #e5e7eb; }
+        @media(min-width:1024px){ #map { height: calc(100vh - 180px); min-height: 420px; } }
+        .dark #map { background: #1e293b; }
+        .bus-card { transition: all 0.2s; cursor: pointer; }
+        .bus-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .dark .bus-card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] min-h-screen" onload="initDarkMode()">
+    <nav class="glass fixed top-0 w-full z-50 border-b border-gray-200 dark:border-[#1a3a5c]">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                </div>
+                <span class="font-bold text-gray-800 dark:text-white">BUS</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="dashboard.html" class="text-blue-600 hover:text-blue-700 text-sm" data-i18n="back">← Retour au tableau de bord</a>
+                <button onclick="toggleDark()" class="w-8 h-8 rounded-lg bg-gray-200 dark:bg-[#1a3a5c] flex items-center justify-center hover:bg-gray-300">
+                    <svg id="darkIcon" class="w-5 h-5 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <button onclick="logout()" class="text-red-500 hover:text-red-700 text-sm px-2" data-i18n="logout">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20 px-4 md:px-6 max-w-7xl mx-auto pb-8">
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-4" data-i18n="searchTitle">Rechercher un bus</h1>
+            <div class="glass rounded-2xl p-4 space-y-4">
+                <input type="text" id="searchInput" oninput="performSearch()" placeholder="Rechercher par numéro, nom, départ, arrivée..." data-i18n="searchPlaceholder" data-i18n-attr="placeholder" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-lg">
+                <div class="grid md:grid-cols-2 gap-3">
+                    <select id="departureFilter" onchange="performSearch()" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                        <option value="">Départ : Tous</option>
+                    </select>
+                    <select id="arrivalFilter" onchange="performSearch()" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
+                        <option value="">Arrivée : Tous</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Résultats de recherche -->
+            <div class="lg:col-span-2 space-y-4" id="searchResults">
+                <div class="glass rounded-2xl p-6 text-center text-gray-500 dark:text-gray-400">
+                    <svg class="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    Tapez pour rechercher des bus...
+                </div>
+            </div>
+
+            <!-- Carte -->
+            <div class="glass rounded-2xl p-4 lg:sticky lg:top-20 lg:self-start">
+                <h3 class="font-semibold text-gray-800 dark:text-white mb-3">🗺 Carte des lignes</h3>
+                <div id="map"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../assets/js/popup.js"></script>
+    <script src="../../assets/js/i18n.js"></script>
+    <script>
+        const API_URL = '../../backend/';
+        let map, markers = [], routeLayers = [];
+        let allBuses = [], allArrets = [];
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeOnly = urlParams.get('active') === '1';
+
+        function checkAuth() {
+            const u = JSON.parse(localStorage.getItem('user'));
+            if (!u || u.role !== 'etudiant') { window.location.replace('../../index.html'); return null; }
+            return u;
+        }
+        const user = checkAuth();
+        if (!user) throw new Error('not auth');
+
+        function initDarkMode() {
+            if (localStorage.getItem('dark') === 'true') document.documentElement.classList.add('dark');
+            try { initMap(); } catch(e) { console.warn('Map:', e); }
+            loadAllBuses();
+        }
+
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'https://tiles.openfreemap.org/styles/liberty',
+                center: [3.0588, 36.7538],
+                zoom: 11
+            });
+            map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+        }
+
+        async function loadAllBuses() {
+            // ── ÉTAPE 1 : charger les lignes et afficher immédiatement ──
+            try {
+                let br = await fetch(API_URL + 'api.php?action=buses').then(r => r.json());
+                if (!Array.isArray(br) || br.length === 0) {
+                    br = await fetch(API_URL + 'api.php?action=lignes').then(r => r.json());
+                }
+                allBuses = Array.isArray(br) ? br : [];
+                populateFilters();
+                displayResults(allBuses);
+            } catch(e) {
+                console.error('Erreur lignes:', e);
+                try {
+                    const lr = await fetch(API_URL + 'api.php?action=lignes').then(r => r.json());
+                    allBuses = Array.isArray(lr) ? lr : [];
+                    populateFilters();
+                    displayResults(allBuses);
+                } catch(e2) { document.getElementById('searchResults').innerHTML = '<p style="padding:20px;color:#ef4444">Erreur chargement des lignes</p>'; }
+            }
+
+            // ── ÉTAPE 2 : charger les arrets pour la carte (indépendant) ──
+            try {
+                const ar = await fetch(API_URL + 'api.php?action=arrets').then(r => r.json());
+                allArrets = Array.isArray(ar) ? ar : [];
+            } catch(e) { allArrets = []; }
+
+            // ── ÉTAPE 3 : mettre à jour la carte ──
+            try {
+                if (map && map.isStyleLoaded()) updateMap(allBuses);
+                else if (map) map.once('load', () => updateMap(allBuses));
+            } catch(e) {}
+        }
+
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const depart = document.getElementById('departureFilter').value.toLowerCase();
+            const arrivee = document.getElementById('arrivalFilter').value.toLowerCase();
+            const results = allBuses.filter(bus => {
+                if (activeOnly && !bus.en_service) return false;
+                if (depart && !(bus.trajet_depart || '').toLowerCase().includes(depart)) return false;
+                if (arrivee && !(bus.trajet_arrivee || '').toLowerCase().includes(arrivee)) return false;
+                if (!query) return true;
+                return (bus.numero || '').toLowerCase().includes(query) ||
+                    (bus.nom || '').toLowerCase().includes(query) ||
+                    (bus.trajet_depart || '').toLowerCase().includes(query) ||
+                    (bus.trajet_arrivee || '').toLowerCase().includes(query);
+            });
+
+            if (!query && !depart && !arrivee && results.length === 0) {
+                document.getElementById('searchResults').innerHTML = `
+                    <div class="glass rounded-2xl p-6 text-center text-gray-500 dark:text-gray-400">
+                        <svg class="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        ${window.i18n ? window.i18n.t('typeToSearch') : 'Tapez pour rechercher des bus...'}
+                    </div>
+                `;
+                updateMap([]);
+                return;
+            }
+
+            displayResults(results);
+            try { if (map) updateMap(results); } catch(e) {}
+        }
+
+        function populateFilters() {
+            const departures = new Set();
+            const arrivals = new Set();
+            allBuses.forEach(bus => {
+                if (bus.trajet_depart) departures.add(bus.trajet_depart);
+                if (bus.trajet_arrivee) arrivals.add(bus.trajet_arrivee);
+            });
+            const departureFilter = document.getElementById('departureFilter');
+            const arrivalFilter = document.getElementById('arrivalFilter');
+
+            if (departureFilter) {
+                departureFilter.innerHTML = '<option value="">Départ : Tous</option>' +
+                    Array.from(departures).sort().map(dep => `<option value="${dep}">${dep}</option>`).join('');
+            }
+            if (arrivalFilter) {
+                arrivalFilter.innerHTML = '<option value="">Arrivée : Tous</option>' +
+                    Array.from(arrivals).sort().map(arr => `<option value="${arr}">${arr}</option>`).join('');
+            }
+        }
+
+        function displayResults(results) {
+            const container = document.getElementById('searchResults');
+            if (!results || results.length === 0) {
+                container.innerHTML = `<div class="glass rounded-2xl p-6 text-center text-gray-500 dark:text-gray-400">
+                    <svg class="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6"/></svg>
+                    Aucun bus trouvé</div>`;
+                return;
+            }
+            try {
+                container.innerHTML = results.map(bus => {
+                    const col      = bus.couleur || '#1d4ed8';
+                    const num      = bus.numero  || '?';
+                    const nom      = esc(bus.nom || '');
+                    const dep      = esc(bus.trajet_depart  || '--');
+                    const arr      = esc(bus.trajet_arrivee || '--');
+                    const libres   = bus.places_libres  != null ? bus.places_libres  : '--';
+                    const totales  = bus.places_totales != null ? bus.places_totales : '--';
+                    const complet  = bus.places_libres === 0;
+                    const actif    = parseInt(bus.en_service) === 1;
+                    const hdeb     = bus.heure_debut || '--:--';
+                    const hfin     = bus.heure_fin   || '--:--';
+                    return `<div class="bus-card glass rounded-2xl p-4 ${actif ? '' : 'opacity-60'}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm" style="background:${col}">${esc(num)}</div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-800 dark:text-white">${nom}</h3>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">${dep} → ${arr}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Places libres</p>
+                                <p class="font-bold text-lg ${complet ? 'text-red-600' : 'text-green-600'}">${libres}</p>
+                                <p class="text-xs ${complet ? 'text-red-500' : 'text-blue-500'}">${complet ? 'Complet' : '/ ' + totales}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between text-sm mb-3 text-gray-500 dark:text-gray-400">
+                            <span>Départ : ${hdeb}</span>
+                            <span>Fin : ${hfin}</span>
+                            <span class="flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full ${actif ? 'bg-green-500' : 'bg-gray-400'}"></span>
+                                ${actif ? 'En service' : 'Arrêté'}
+                            </span>
+                        </div>
+                        <button type="button" onclick="selectBus(${bus.id})" class="w-full rounded-xl py-2.5 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700">
+                            Voir le bus →
+                        </button>
+                    </div>`;
+                }).join('');
+            } catch(e) {
+                console.error('displayResults error', e);
+                container.innerHTML = '<p class="text-red-500 p-4">Erreur affichage</p>';
+            }
+        }
+
+        function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        function clearMap() {
+            if (!map) return;
+            markers.forEach(m => m.remove()); markers = [];
+            routeLayers.forEach(l => { try { if (map.getLayer(l)) map.removeLayer(l); } catch(e){} });
+            const done = new Set();
+            routeLayers.forEach(l => {
+                const src = 'r-' + l.replace('rl-','');
+                try { if (!done.has(src) && map.getSource(src)) { map.removeSource(src); done.add(src); } } catch(e){}
+            });
+            routeLayers = [];
+        }
+
+        function updateMap(results) {
+            if (!map.isStyleLoaded()) { map.once('load', () => updateMap(results)); return; }
+            clearMap();
+            if (!results.length) return;
+
+            const bounds = new mapboxgl.LngLatBounds();
+            let any = false;
+
+            results.forEach(b => {
+                const col = b.couleur || '#1d4ed8';
+                const on  = !!parseInt(b.en_service);
+
+                // ── Tracé de la route ──
+                const stops = allArrets
+                    .filter(a => a.ligne_id == b.id && a.latitude && a.longitude)
+                    .sort((x,y) => x.ordre - y.ordre)
+                    .map(a => [parseFloat(a.longitude), parseFloat(a.latitude)]);
+
+                if (stops.length >= 2) {
+                    const src = 'r-' + b.id, lid = 'rl-' + b.id;
+                    if (!map.getSource(src)) {
+                        map.addSource(src, { type:'geojson', data:{ type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates:stops } } });
+                        map.addLayer({ id:lid, type:'line', source:src, paint:{ 'line-color':col, 'line-width':3, 'line-opacity': on ? 0.8 : 0.3 } });
+                        routeLayers.push(lid);
+                    }
+                    stops.forEach(c => { bounds.extend(c); any = true; });
+                }
+
+                // ── Arrêts ──
+                allArrets.filter(a => a.ligne_id == b.id && a.latitude && a.longitude).forEach(a => {
+                    const el = document.createElement('div');
+                    el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${col};border:2.5px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.4);cursor:pointer;`;
+                    const mk = new mapboxgl.Marker({ element: el })
+                        .setLngLat([parseFloat(a.longitude), parseFloat(a.latitude)])
+                        .setPopup(new mapboxgl.Popup({ offset: 12 }).setHTML(
+                            `<strong>${esc(a.nom)}</strong><br>` +
+                            `<span style="color:${col};font-size:11px">Ligne ${esc(b.numero)}</span>`
+                        ))
+                        .addTo(map);
+                    markers.push(mk); // stocké pour pouvoir être supprimé
+                });
+
+                // ── Position du bus ──
+                const lat = parseFloat(b.latitude), lng = parseFloat(b.longitude);
+                if (!isNaN(lat) && !isNaN(lng) && !(lat===0 && lng===0)) {
+                    const el = document.createElement('div');
+                    el.style.cssText = `width:38px;height:38px;border-radius:50%;background:${on?col:'#9ca3af'};border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;cursor:pointer;`;
+                    el.textContent = b.numero || '?';
+                    const mk = new mapboxgl.Marker({ element: el })
+                        .setLngLat([lng, lat])
+                        .setPopup(new mapboxgl.Popup({ offset: 20 }).setHTML(
+                            `<strong style="color:${col}">Ligne ${esc(b.numero)}</strong><br>` +
+                            `${esc(b.trajet_depart)} → ${esc(b.trajet_arrivee)}<br>` +
+                            `Places: ${b.places_libres??'--'}/${b.places_totales??'--'}<br>` +
+                            `<span style="color:${on?'#10b981':'#9ca3af'}">${on?'En service':'Arrêté'}</span>`
+                        )).addTo(map);
+                    markers.push(mk);
+                    bounds.extend([lng, lat]); any = true;
+                }
+            });
+
+            if (any && !bounds.isEmpty()) map.fitBounds(bounds, { padding: 50, maxZoom: 14, duration: 500 });
+        }
+
+        function selectBus(busId) {
+            window.location.href = 'bus.html?id=' + busId;
+        }
+
+        function toggleDark() {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.setItem('dark', isDark);
+            const icon = document.getElementById('darkIcon');
+            icon.innerHTML = isDark ?
+                '<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>' :
+                '<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>';
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('remember');
+            window.location.href = '../../index.html';
+        }
+    </script>
+</body>
+</html>

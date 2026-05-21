@@ -1,0 +1,1 @@
+<script>const mapboxgl = maplibregl;</script>

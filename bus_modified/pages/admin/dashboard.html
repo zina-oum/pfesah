@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - BUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <script>const mapboxgl = maplibregl;</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+        .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(10,22,40,0.95); }
+        .dark { color: #e2e8f0; }
+        .dark .text-gray-800 { color: #e2e8f0; }
+        .dark .text-gray-700 { color: #cbd5e1; }
+        .dark .text-gray-600 { color: #94a3b8; }
+        .dark input, .dark select { background: #0f2942; border-color: #1a3a5c; color: #e2e8f0; }
+        #adminMap { height: 350px; border-radius: 1rem; }
+        .tab { transition: all 0.2s; cursor: pointer; }
+        .tab.active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .dark .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+        .bar-chart { display: flex; align-items: flex-end; gap: 0.5rem; height: 200px; }
+        .bar { flex: 1; background: #3b82f6; border-radius: 0.5rem 0.5rem 0 0; min-width: 20px; }
+        .dark .bar { background: #60a5fa; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] min-h-screen" onload="initDarkMode()">
+    <!-- Navigation -->
+    <nav class="nav-glass fixed top-0 w-full z-50 border-b border-gray-200/50 dark:border-slate-700/50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                </div>
+                <span class="text-xl font-bold text-gray-800 dark:text-white">BUS</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="userName" class="text-gray-600 dark:text-gray-300 font-medium"></span>
+                <button onclick="toggleDark()" class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-slate-800 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-slate-700 transition">
+                    <svg id="darkIcon" class="w-5 h-5 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <button onclick="logout()" class="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg font-medium">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar & Main Content -->
+    <div class="pt-24 flex">
+        <!-- Sidebar -->
+        <aside class="w-64 glass h-[calc(100vh-6rem)] fixed left-0 top-24 border-r border-gray-200 dark:border-slate-700 p-4 overflow-y-auto">
+            <nav class="space-y-2">
+                <a onclick="showTab(event, 'dashboard')" class="tab flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg active">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    Tableau de Bord
+                </a>
+
+                <a onclick="showTab(event, 'drivers')" class="tab flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    Chauffeurs
+                </a>
+                <a onclick="showTab(event, 'routes')" class="tab flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                    Trajets
+                </a>
+                <a onclick="showTab(event, 'analytics')" class="tab flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    Statistiques
+                </a>
+                <a onclick="showTab(event, 'settings')" class="tab flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    Étudiants
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="ml-64 flex-1 px-6 pb-12 max-w-7xl mx-auto">
+            <!-- Dashboard Tab (par défaut) -->
+            <div id="dashboard-tab" class="tab-content">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">Tableau de Bord</h1>
+                
+                <!-- Stats Cards -->
+                <div class="grid md:grid-cols-5 gap-6 mb-8">
+                    <div class="glass rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">BUS</p>
+                                <p id="statBus" class="text-4xl font-bold text-blue-600">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">CHAUFFEURS</p>
+                                <p id="statChauffeurs" class="text-4xl font-bold text-green-600">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">ÉTUDIANTS</p>
+                                <p id="statEtudiants" class="text-4xl font-bold text-purple-600">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">EN ATTENTE</p>
+                                <p id="statPending" class="text-4xl font-bold text-yellow-600">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass rounded-2xl p-6 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">LIGNES</p>
+                                <p id="statLignes" class="text-4xl font-bold text-orange-600">0</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Carte des bus -->
+                <div class="glass rounded-2xl shadow-lg p-6 mb-8">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Carte en Direct</h2>
+                    <div id="adminMap" class="h-80 rounded-xl"></div>
+                </div>
+
+                <!-- État des lignes de bus -->
+                <div class="glass rounded-2xl shadow-lg p-6 mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">État des Lignes</h2>
+                        <span class="flex items-center gap-1 text-xs text-green-500 font-medium"><span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>Live</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-slate-700 text-xs uppercase tracking-wide">
+                                <tr>
+                                    <th class="pb-3 pr-4">Ligne</th>
+                                    <th class="pb-3 pr-4">Statut</th>
+                                    <th class="pb-3 pr-4">Chauffeur</th>
+                                    <th class="pb-3 pr-4">Trajet</th>
+                                    <th class="pb-3 pr-4">Vitesse</th>
+                                    <th class="pb-3 pr-4">Places</th>
+                                    <th class="pb-3 pr-4">Immat.</th>
+                                    <th class="pb-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="busFleetTable" class="divide-y divide-gray-100 dark:divide-slate-700/60">
+                                <!-- Rempli par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Occupation des bus -->
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-1">Occupation des bus</h2>
+                        <p class="text-xs text-gray-400 mb-3">Places occupées par ligne — rouge &gt;80%, orange &gt;50%</p>
+                        <div class="bar-chart" id="routeChart"></div>
+                        <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400" id="routeChartLabels"></div>
+                    </div>
+
+                    <!-- Statut live des bus -->
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Statut des bus</h2>
+                            <span class="flex items-center gap-1 text-xs text-green-500 font-medium"><span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>Live</span>
+                        </div>
+                        <div id="activityLog" class="space-y-2 max-h-64 overflow-y-auto">
+                            <!-- Rempli par JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Autres onglets (contenu existant) -->
+
+
+            <div id="drivers-tab" class="tab-content hidden">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">Gestion des Chauffeurs</h1>
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Créer un chauffeur</h2>
+                        <form id="createDriverForm" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input type="text" id="driverNom" placeholder="Nom" required class="px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl">
+                                <input type="text" id="driverPrenom" placeholder="Prénom" required class="px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl">
+                            </div>
+                            <input type="email" id="driverEmail" placeholder="Email" required class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl">
+                            <input type="password" id="driverPassword" placeholder="Mot de passe" required class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl">
+                            <div class="border-t border-gray-200 dark:border-slate-600 pt-4">
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bus du chauffeur</p>
+                                <div class="space-y-3">
+                                    <select id="driverLigne" required class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                                        <option value="">-- Ligne (obligatoire) --</option>
+                                    </select>
+                                    <input type="text" id="driverImmat" placeholder="Ex: 12345-046-16" required maxlength="20" class="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm font-mono tracking-widest" oninput="formatImmatAlg(this)">
+                                    <p class="text-xs text-gray-400 mt-1">Format algérien : NNNNN-NNN-NN (ex: 12345-046-16)</p>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <input type="text" id="driverMarque" placeholder="Marque" class="px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                                        <input type="text" id="driverModele" placeholder="Modèle" class="px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                                        <input type="number" id="driverPlaces" placeholder="Places" value="40" min="1" class="px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700">Créer le chauffeur</button>
+                        </form>
+                    </div>
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Chauffeurs</h2>
+                        <div id="driversList" class="space-y-3 max-h-64 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="routes-tab" class="tab-content hidden">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">Gestion des Routes</h1>
+
+                <!-- Formulaire création de ligne -->
+                <div class="glass rounded-2xl shadow-lg p-6 mb-8">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Ajouter une ligne</h2>
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Numéro</label>
+                            <input id="rl_numero" type="text" placeholder="L1" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Nom</label>
+                            <input id="rl_nom" type="text" placeholder="Campus Centre" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Couleur</label>
+                            <input id="rl_couleur" type="color" value="#3B82F6" class="w-full h-10 rounded-xl border border-gray-200 dark:border-slate-600 cursor-pointer" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Départ</label>
+                            <input id="rl_depart" type="text" placeholder="Place des Martyrs" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Arrivée</label>
+                            <input id="rl_arrivee" type="text" placeholder="Campus Universitaire" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Heure début</label>
+                                <input id="rl_debut" type="time" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Heure fin</label>
+                                <input id="rl_fin" type="time" class="w-full px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm" />
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    <button onclick="createLigne()" class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-semibold text-sm">+ Ajouter la ligne</button>
+
+                    <!-- Liste des lignes -->
+                    <div class="glass rounded-2xl shadow-lg p-6 mt-8">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Lignes actives</h2>
+                            <button onclick="loadRoutes()" class="text-sm text-blue-600 hover:underline">↻ Actualiser</button>
+                        </div>
+                        <div id="routesList" class="space-y-3"></div>
+                    </div>
+
+                    <!-- Gestion des arrêts par carte -->
+                    <div class="glass rounded-2xl shadow-lg p-6 mt-8">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-1">Arrêts des lignes</h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Sélectionnez une ligne puis cliquez sur la carte pour ajouter un arrêt. "Trouver auto" importe les vrais arrêts OSM entre le départ et l'arrivée (fac, Ooredoo, etc.).</p>
+                        <div class="flex flex-wrap gap-3 mb-4 items-center">
+                            <select id="stopLigneSelect" onchange="onStopLigneChange()" class="px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl text-sm">
+                                <option value="">-- Sélectionner une ligne --</option>
+                            </select>
+                            <button type="button" onclick="autoSearchStops()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm hover:bg-emerald-700">🔍 Trouver arrêts auto</button>
+                            <span id="stopSearchStatus" class="text-sm text-gray-500 dark:text-gray-400"></span>
+                        </div>
+                        <div class="grid lg:grid-cols-5 gap-4">
+                            <div class="lg:col-span-3">
+                                <p class="text-xs text-gray-400 mb-2">Cliquez sur la carte pour ajouter un arrêt manuellement</p>
+                                <div id="stopPickerMap" style="height:420px;border-radius:0.75rem;"></div>
+                            </div>
+                            <div class="lg:col-span-2">
+                                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Arrêts de la ligne</p>
+                                <div id="lineStopsList" class="space-y-2 max-h-96 overflow-y-auto">
+                                    <p class="text-sm text-gray-400">Sélectionnez une ligne</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="stopAddPanel" class="hidden mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                            <p class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">📍 Ajouter cet emplacement comme arrêt</p>
+                            <div class="flex gap-2 flex-wrap">
+                                <input id="stopNameInput" type="text" placeholder="Nom de l'arrêt..." class="flex-1 min-w-0 px-3 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-blue-500">
+                                <button onclick="confirmAddStop()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">Ajouter</button>
+                                <button onclick="cancelAddStop()" class="px-4 py-2 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm">Annuler</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <div id="analytics-tab" class="tab-content hidden">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">Signalements & Incidents</h1>
+                <div class="grid lg:grid-cols-3 gap-6">
+                    <!-- Incidents chauffeurs (table incidents) -->
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></span>
+                            <h2 class="text-base font-semibold text-gray-800 dark:text-white">Incidents — Chauffeurs</h2>
+                        </div>
+                        <div id="incidentsList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    </div>
+                    <!-- Signalements étudiants -->
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                            <h2 class="text-base font-semibold text-gray-800 dark:text-white">Signalements — Étudiants</h2>
+                        </div>
+                        <div id="signalementsEtudiantList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    </div>
+                    <!-- Signalements chauffeurs -->
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 flex-shrink-0"></span>
+                            <h2 class="text-base font-semibold text-gray-800 dark:text-white">Signalements — Chauffeurs</h2>
+                        </div>
+                        <div id="signalementsChauffeurList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings-tab" class="tab-content hidden">
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">Gestion des Étudiants</h1>
+                <div class="grid lg:grid-cols-2 gap-6 mb-8">
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Inscriptions en attente</h2>
+                        <div id="pendingList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    </div>
+                    <div class="glass rounded-2xl shadow-lg p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tous les étudiants</h2>
+                        <div id="studentsList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    </div>
+                </div>
+                
+                <!-- Demandes de mot de passe chauffeur -->
+                <div class="glass rounded-2xl shadow-lg p-6 mb-8">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Demandes de mot de passe (Chauffeurs)</h2>
+                    <div id="passwordResetList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                </div>
+                
+                <div class="glass rounded-2xl shadow-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 text-red-600">Étudiants refusés</h2>
+                    <div id="rejectedList" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../../assets/js/popup.js"></script>
+    <script>
+        const API_URL = '../../backend/';
+        function checkAuth() {
+            const u = JSON.parse(localStorage.getItem('user'));
+            if (!u || u.role !== 'admin') { window.location.replace('../../index.html'); return null; }
+            return u;
+        }
+        const user = checkAuth();
+        if (!user) throw new Error('not auth');
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted || (window.performance && window.performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
+                checkAuth();
+            }
+        });
+        document.getElementById('userName').textContent = user.prenom + ' ' + user.nom;
+
+        // Dark mode
+        function initDarkMode() {
+            if (localStorage.getItem('dark') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        function toggleDark() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('dark', isDark);
+        }
+        initDarkMode();
+
+        // Gestion des onglets
+        function showTab(evt, tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const targetTab = document.getElementById(tabName + '-tab');
+            if (targetTab) {
+                targetTab.classList.remove('hidden');
+            }
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active', 'text-blue-600', 'dark:text-blue-400'));
+            const tabElement = evt?.currentTarget || evt?.target?.closest('.tab');
+            if (tabElement) {
+                tabElement.classList.add('active', 'text-blue-600', 'dark:text-blue-400');
+            }
+            if (tabName === 'analytics') {
+                loadIncidents();
+                loadSignalements();
+            } else if (tabName === 'settings') {
+                loadPending();
+                loadStudents();
+                loadRejected();
+                loadPasswordResetRequests();
+            } else if (tabName === 'dashboard') {
+                loadStats();
+                loadBusFleet();
+                loadChartData();
+                loadActivityLog();
+                if (adminMap) setTimeout(() => adminMap.resize(), 50);
+            } else if (tabName === 'drivers') {
+                loadDrivers();
+                loadLignes();
+            } else if (tabName === 'routes') {
+                loadRoutes();
+                setTimeout(() => { initStopPickerMap(); loadStopLigneSelect(); }, 80);
+            }
+        }
+
+        // API call helper
+        function apiCall(action, extraData = {}) {
+            return fetch(API_URL + 'admin_api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, user_id: user.id, user_role: user.role, ...extraData })
+            });
+        }
+
+        // Déconnexion
+        function logout() {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '../../index.html';
+        }
+
+        // Carte
+        let adminMap, adminMarkers = [], routeLayers = [];
+        function initMap() {
+            adminMap = new mapboxgl.Map({
+                container: 'adminMap',
+                style: 'https://tiles.openfreemap.org/styles/liberty',
+                center: [3.0588, 36.7538],
+                zoom: 13
+            });
+            adminMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+        }
+
+        function clearRouteLayers() {
+            // Supprimer tous les layers d'abord, puis les sources
+            routeLayers.forEach(layer => {
+                if (adminMap.getLayer(layer.id)) adminMap.removeLayer(layer.id);
+            });
+            const removedSources = new Set();
+            routeLayers.forEach(layer => {
+                if (!removedSources.has(layer.source) && adminMap.getSource(layer.source)) {
+                    adminMap.removeSource(layer.source);
+                    removedSources.add(layer.source);
+                }
+            });
+            routeLayers = [];
+        }
+
+        async function loadBusPositions() {
+            if (!adminMap || !adminMap.style || !adminMap.style.loaded()) {
+                if (adminMap) {
+                    adminMap.once('load', loadBusPositions);
+                }
+                return;
+            }
+            try {
+                const [busRes, stopRes, lignesRes] = await Promise.all([
+                    fetch(API_URL + 'api.php?action=positions'),
+                    fetch(API_URL + 'api.php?action=arrets'),
+                    fetch(API_URL + 'api.php?action=lignes')
+                ]);
+                const buses = await busRes.json();
+                const stops = await stopRes.json();
+                const lignes = await lignesRes.json();
+                adminMarkers.forEach(m => m.remove());
+                adminMarkers = [];
+                clearRouteLayers();
+
+                const validBuses = buses.filter(bus => {
+                    const lat = parseFloat(bus.latitude);
+                    const lng = parseFloat(bus.longitude);
+                    return Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)
+                        && lat >= 18 && lat <= 38 && lng >= -9 && lng <= 12;
+                });
+                const validStops = stops
+                    .map(stop => ({
+                        ...stop,
+                        latitude: parseFloat(stop.latitude),
+                        longitude: parseFloat(stop.longitude),
+                        ordre: Number(stop.ordre || 0)
+                    }))
+                    .filter(stop => Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude)
+                        && stop.latitude >= 18 && stop.latitude <= 38
+                        && stop.longitude >= -9 && stop.longitude <= 12);
+
+                // Display routes
+                const routes = validStops.reduce((acc, stop) => {
+                    if (!acc[stop.ligne_id]) acc[stop.ligne_id] = [];
+                    acc[stop.ligne_id].push({ coordinate: [stop.longitude, stop.latitude], order: Number(stop.ordre || 0) });
+                    return acc;
+                }, {});
+
+                Object.entries(routes).forEach(([ligneId, coords]) => {
+                    const ligne = lignes.find(l => l.id == ligneId);
+                    if (!ligne) return;
+
+                    const sortedCoords = coords
+                        .sort((a, b) => a.order - b.order)
+                        .map(item => item.coordinate)
+                        .filter(coord => coord[0] !== null && coord[1] !== null);
+
+                    if (sortedCoords.length < 2) return;
+
+                    const routeColor = ligne.couleur || '#3B82F6';
+                    const geojson = {
+                        type: 'FeatureCollection',
+                        features: [
+                            {
+                                type: 'Feature',
+                                properties: { color: routeColor, label: `Ligne ${ligne.numero}` },
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: sortedCoords
+                                }
+                            },
+                            ...sortedCoords.map((coordinate, index) => ({
+                                type: 'Feature',
+                                properties: {
+                                    label: `${index + 1}. ${ligne.numero}`,
+                                    order: index + 1,
+                                    lineColor: routeColor
+                                },
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: coordinate
+                                }
+                            }))
+                        ]
+                    };
+
+                    const sourceId = `route-${ligneId}`;
+                    const lineId = `route-line-${ligneId}`;
+                    const stopCircleId = `route-stop-circle-${ligneId}`;
+                    const stopTextId = `route-stop-text-${ligneId}`;
+
+                    adminMap.addSource(sourceId, {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    adminMap.addLayer({
+                        id: lineId,
+                        type: 'line',
+                        source: sourceId,
+                        filter: ['==', ['geometry-type'], 'LineString'],
+                        paint: {
+                            'line-color': routeColor,
+                            'line-width': 4,
+                            'line-opacity': 0.9
+                        }
+                    });
+
+                    adminMap.addLayer({
+                        id: stopCircleId,
+                        type: 'circle',
+                        source: sourceId,
+                        filter: ['==', ['geometry-type'], 'Point'],
+                        paint: {
+                            'circle-radius': 6,
+                            'circle-color': routeColor,
+                            'circle-stroke-color': '#ffffff',
+                            'circle-stroke-width': 2
+                        }
+                    });
+
+                    adminMap.addLayer({
+                        id: stopTextId,
+                        type: 'symbol',
+                        source: sourceId,
+                        filter: ['==', ['geometry-type'], 'Point'],
+                        layout: {
+                            'text-field': ['get', 'label'],
+                            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                            'text-offset': [0, 1.3],
+                            'text-size': 11,
+                            'text-anchor': 'top'
+                        },
+                        paint: {
+                            'text-color': '#0f172a',
+                            'text-halo-color': '#ffffff',
+                            'text-halo-width': 1
+                        }
+                    });
+
+                    routeLayers.push({ id: lineId, source: sourceId });
+                    routeLayers.push({ id: stopCircleId, source: sourceId });
+                    routeLayers.push({ id: stopTextId, source: sourceId });
+                });
+
+                validStops.forEach(stop => {
+                    const ligne = lignes.find(l => l.id == stop.ligne_id);
+                    const stopColor = ligne?.couleur || '#3b82f6';
+                    const stopEl = document.createElement('div');
+                    stopEl.style.width = '12px';
+                    stopEl.style.height = '12px';
+                    stopEl.style.borderRadius = '50%';
+                    stopEl.style.background = stopColor;
+                    stopEl.style.border = '2px solid white';
+                    stopEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+
+                    const marker = new mapboxgl.Marker({ element: stopEl })
+                        .setLngLat([stop.longitude, stop.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                            `<b>${stop.nom}</b><br>Ligne ${stop.ligne_numero || stop.ligne_id}`
+                        ))
+                        .addTo(adminMap);
+                    adminMarkers.push(marker);
+                });
+
+                validBuses.forEach(bus => {
+                    const el = document.createElement('div');
+                    el.style.width = '32px';
+                    el.style.height = '32px';
+                    el.style.borderRadius = '50%';
+                    el.style.background = bus.en_service ? '#22c55e' : '#9ca3af';
+                    el.style.border = '2px solid white';
+                    el.style.boxShadow = '0 4px 14px rgba(0,0,0,0.2)';
+                    el.style.display = 'flex';
+                    el.style.alignItems = 'center';
+                    el.style.justifyContent = 'center';
+                    el.style.color = 'white';
+                    el.style.fontSize = '12px';
+                    el.style.fontWeight = '700';
+                    el.textContent = bus.numero;
+
+                    const marker = new mapboxgl.Marker({ element: el })
+                        .setLngLat([bus.longitude, bus.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                            `<b>${bus.numero}</b><br>Places: ${bus.places_libres}/40<br>Vitesse: ${bus.vitesse} km/h`
+                        ))
+                        .addTo(adminMap);
+                    adminMarkers.push(marker);
+                });
+
+                if (validBuses.length === 1) {
+                    adminMap.setCenter([validBuses[0].longitude, validBuses[0].latitude]);
+                    adminMap.setZoom(13);
+                } else if (!validBuses.length && validStops.length) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    validStops.forEach(stop => bounds.extend([stop.longitude, stop.latitude]));
+                    adminMap.fitBounds(bounds, { padding: 40, maxZoom: 14 });
+                } else if (validBuses.length > 1) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    validBuses.forEach(bus => bounds.extend([bus.longitude, bus.latitude]));
+                    validStops.forEach(stop => bounds.extend([stop.longitude, stop.latitude]));
+                    adminMap.fitBounds(bounds, { padding: 40, maxZoom: 14 });
+                }
+            } catch (e) { console.error('Erreur chargement positions', e); }
+        }
+
+        // Statistiques
+        async function loadStats() {
+            try {
+                const res = await apiCall('stats');
+                const data = await res.json();
+                if (data.error) {
+                    showPopup('Erreur: ' + data.error, 'error');
+                } else {
+                    document.getElementById('statBus').textContent = data.bus || 0;
+                    document.getElementById('statChauffeurs').textContent = data.chauffeurs || 0;
+                    document.getElementById('statEtudiants').textContent = data.etudiants || 0;
+                    document.getElementById('statPending').textContent = data.pending || 0;
+                    document.getElementById('statLignes').textContent = data.lignes || 0;
+                }
+            } catch (e) { 
+                showPopup('Erreur de connexion au serveur', 'error'); 
+            }
+        }
+
+        // Tableau des lignes — toutes les infos BDD (un bus par ligne)
+        let _fleetBuses = [];
+
+        async function loadBusFleet() {
+            try {
+                const res = await apiCall('all_buses');
+                _fleetBuses = await res.json();
+                const tbody = document.getElementById('busFleetTable');
+                if (!Array.isArray(_fleetBuses) || !_fleetBuses.length) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-gray-400 text-sm">Aucune ligne enregistrée</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = _fleetBuses.map(bus => {
+                    const on = parseInt(bus.en_service);
+                    const total = parseInt(bus.places_totales) || 40;
+                    const libres = bus.places_libres != null ? parseInt(bus.places_libres) : total;
+                    const occupees = total - libres;
+                    const pct = Math.round((occupees / total) * 100);
+                    const couleur = bus.couleur || '#3b82f6';
+                    const spd = bus.vitesse ? Math.round(parseFloat(bus.vitesse)) + ' km/h' : '--';
+                    const chauffeur = bus.chauffeur_nom
+                        ? `${bus.chauffeur_prenom || ''} ${bus.chauffeur_nom}`.trim()
+                        : '<span class="text-gray-400 italic">Non assigné</span>';
+                    const ligneNum = bus.ligne_numero || '?';
+                    const barColor = pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-amber-400' : 'bg-blue-500';
+                    const busId = parseInt(bus.id);
+                    return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/40 transition-colors">
+                        <td class="py-3 pr-4">
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:${couleur}">${ligneNum}</span>
+                                <span class="font-medium text-gray-800 dark:text-white">${bus.ligne_nom || '--'}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 pr-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${on ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-gray-400'}">
+                                ${on ? '● En service' : '○ Arrêté'}
+                            </span>
+                        </td>
+                        <td class="py-3 pr-4 text-gray-700 dark:text-gray-300">${chauffeur}</td>
+                        <td class="py-3 pr-4 text-gray-600 dark:text-gray-400 max-w-[160px] truncate">${bus.trajet_depart || '--'} → ${bus.trajet_arrivee || '--'}</td>
+                        <td class="py-3 pr-4 font-mono text-gray-700 dark:text-gray-300">${spd}</td>
+                        <td class="py-3 pr-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-16 h-1.5 bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full ${barColor}" style="width:${pct}%"></div>
+                                </div>
+                                <span class="text-xs text-gray-500 whitespace-nowrap">${libres}/${total}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 pr-4 text-gray-500 dark:text-gray-400 font-mono text-xs">${bus.immatriculation || '--'}</td>
+                        <td class="py-3">
+                            <button onclick="openLineDetail(${busId})" class="px-2.5 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition font-medium">
+                                Voir →
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        // Graphique occupation des bus (données live)
+        async function loadChartData() {
+            try {
+                const res = await fetch(API_URL + 'api.php?action=buses');
+                const buses = await res.json();
+                const chartDiv = document.getElementById('routeChart');
+                const labelsDiv = document.getElementById('routeChartLabels');
+                if (!Array.isArray(buses) || !buses.length) {
+                    chartDiv.innerHTML = '<p class="text-xs text-gray-400 text-center w-full self-center">Aucune ligne active</p>';
+                    return;
+                }
+                const maxOcc = Math.max(...buses.map(b => (parseInt(b.places_totales)||40) - (parseInt(b.places_libres)||0)), 1);
+                chartDiv.innerHTML = buses.map(b => {
+                    const total = parseInt(b.places_totales) || 40;
+                    const libres = parseInt(b.places_libres) ?? total;
+                    const occupied = Math.max(0, total - libres);
+                    const pct = Math.round((occupied / total) * 100);
+                    const h = Math.max(8, Math.round((occupied / maxOcc) * 170));
+                    const col = pct > 80 ? '#ef4444' : pct > 50 ? '#f59e0b' : '#3b82f6';
+                    return `<div class="bar" style="height:${h}px;background:${col};" title="Ligne ${b.numero}: ${occupied}/${total} places (${pct}% occupé)"></div>`;
+                }).join('');
+                if (labelsDiv) labelsDiv.innerHTML = buses.map(b => `<span>${b.numero||'?'}</span>`).join('');
+            } catch(e) { console.error('Erreur graphique', e); }
+        }
+
+        // Statut live des bus
+        async function loadActivityLog() {
+            try {
+                const res = await fetch(API_URL + 'api.php?action=buses');
+                const buses = await res.json();
+                const logDiv = document.getElementById('activityLog');
+                if (!Array.isArray(buses) || !buses.length) {
+                    logDiv.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Aucun bus enregistré</p>';
+                    return;
+                }
+                logDiv.innerHTML = buses.map(b => {
+                    const on = parseInt(b.en_service);
+                    const libres = b.places_libres ?? '?';
+                    const total = b.places_totales ?? '?';
+                    const spd = b.vitesse ? parseFloat(b.vitesse).toFixed(0) + ' km/h' : '-- km/h';
+                    const pct = total > 0 ? Math.round(((total - libres) / total) * 100) : 0;
+                    return `
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl">
+                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0 ${on ? 'bg-green-500' : 'bg-gray-400'}"></span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-semibold text-gray-800 dark:text-white">Ligne ${b.numero||'?'}</span>
+                                <span class="text-xs font-medium ${on ? 'text-green-600' : 'text-gray-400'}">${on ? 'En service' : 'Arrêté'}</span>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500 mt-0.5">
+                                <span>${b.trajet_depart||'--'} → ${b.trajet_arrivee||'--'}</span>
+                                <span>${spd}</span>
+                            </div>
+                            <div class="mt-1.5 h-1.5 bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full ${pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-amber-400' : 'bg-blue-500'}" style="width:${pct}%"></div>
+                            </div>
+                            <div class="text-xs text-gray-400 mt-0.5">${libres}/${total} places libres</div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        // ========== Fonctions pour les autres onglets (reprises de l'ancien fichier) ==========
+        async function loadPending() {
+            try {
+                const res = await apiCall('pending');
+                const data = await res.json();
+                const container = document.getElementById('pendingList');
+                container.innerHTML = data.length ? data.map(u => {
+                    const name = `${u.prenom} ${u.nom}`;
+                    return `
+                    <div class="p-3 bg-gray-50 dark:bg-slate-700 rounded-xl">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-medium text-gray-800 dark:text-white">${name}</div>
+                            <span class="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">En attente</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-2">${u.email}</div>
+                        <div class="text-sm mb-3">
+                            <span class="text-gray-600 dark:text-gray-400">Code étudiant:</span>
+                            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">${u.code_etudiant || 'N/A'}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" data-action="validate" data-id="${u.id}" data-name="${encodeURIComponent(name)}" data-popup-message="Validation de ${name} en cours..." class="pending-action flex-1 px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">Valider</button>
+                            <button type="button" data-action="reject" data-id="${u.id}" data-name="${encodeURIComponent(name)}" data-popup-message="Refus de ${name} en cours..." class="pending-action flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Refuser</button>
+                        </div>
+                    </div>
+                `}).join('') : '<p class="text-gray-500 text-center py-4">Aucune inscription en attente</p>';
+                container.addEventListener('click', (event) => {
+                    const btn = event.target.closest('.pending-action');
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const id = parseInt(btn.dataset.id, 10);
+                    const name = decodeURIComponent(btn.dataset.name || '');
+                    if (!id || !action) {
+                        showPopup('Impossible de traiter cette action', 'error');
+                        return;
+                    }
+                    if (action === 'validate') {
+                        confirmValidate(id, name);
+                    } else {
+                        confirmReject(id, name);
+                    }
+                });
+            } catch (e) {
+                console.error(e);
+                showPopup('Impossible de charger les étudiants en attente', 'error');
+            }
+        }
+
+        async function loadStudents() {
+            try {
+                const res = await apiCall('all_students');
+                const data = await res.json();
+                const container = document.getElementById('studentsList');
+                container.innerHTML = data.length ? data.map(u => {
+                    const name = `${u.prenom} ${u.nom}`;
+                    const statut = u.statut;
+                    return `
+                    <div class="p-3 bg-gray-50 dark:bg-slate-700 rounded-xl">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-medium text-gray-800 dark:text-white">${name}</div>
+                            <span class="px-2 py-1 rounded-full text-xs ${statut === 'validated' ? 'bg-green-100 text-green-700' : statut === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${statut === 'validated' ? 'Validé' : statut === 'rejected' ? 'Refusé' : 'En attente'}</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">${u.email}</div>
+                        <div class="text-sm mb-3">
+                            <span class="text-gray-600 dark:text-gray-400">Code:</span>
+                            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">${u.code_etudiant || 'N/A'}</span>
+                        </div>
+                        ${statut === 'pending' ? `
+                        <div class="flex gap-2">
+                            <button type="button" data-action="validate" data-id="${u.id}" data-name="${encodeURIComponent(name)}" data-popup-message="Validation de ${name} en cours..." class="student-action flex-1 px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">Valider</button>
+                            <button type="button" data-action="reject" data-id="${u.id}" data-name="${encodeURIComponent(name)}" data-popup-message="Refus de ${name} en cours..." class="student-action flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Refuser</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `}).join('') : '<p class="text-gray-500 text-center py-4">Aucun étudiant</p>';
+                container.querySelectorAll('.student-action').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const action = btn.dataset.action;
+                        const id = parseInt(btn.dataset.id, 10);
+                        const name = decodeURIComponent(btn.dataset.name || '');
+                        if (!id || !action) {
+                            showPopup('Impossible de traiter cette action', 'error');
+                            return;
+                        }
+                        if (action === 'validate') {
+                            confirmValidate(id, name);
+                        } else {
+                            confirmReject(id, name);
+                        }
+                    });
+                });
+            } catch (e) {
+                console.error(e);
+                showPopup('Impossible de charger la liste des étudiants', 'error');
+            }
+        }
+
+        async function validateStudent(id) {
+            try {
+                const res = await apiCall('validate', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Étudiant validé!', 'success');
+                    loadStudents();
+                    loadPending();
+                    loadStats();
+                } else {
+                    showPopup(data.message || 'Erreur lors de la validation', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showPopup('Erreur serveur lors de la validation', 'error');
+            }
+        }
+
+        async function rejectStudent(id) {
+            try {
+                const res = await apiCall('reject', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Étudiant refusé!', 'success');
+                    loadStudents();
+                    loadPending();
+                    loadRejected();
+                } else {
+                    showPopup(data.message || 'Erreur lors du refus', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showPopup('Erreur serveur lors du refus', 'error');
+            }
+        }
+
+        function confirmValidate(id, name) {
+            showConfirm(`Voulez-vous vraiment valider ${name}?`, () => {
+                validateStudent(id);
+            });
+        }
+
+        function confirmReject(id, name) {
+            showConfirm(`Voulez-vous vraiment refuser ${name}? Cette action est irréversible.`, () => {
+                rejectStudent(id);
+            });
+        }
+
+        async function validateUser(id) {
+            try {
+                const res = await apiCall('validate', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Utilisateur validé', 'success');
+                    loadPending();
+                    loadStudents();
+                    loadStats();
+                } else {
+                    showPopup(data.message || 'Erreur lors de la validation', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showPopup('Erreur serveur', 'error');
+            }
+        }
+
+        async function rejectUser(id) {
+            try {
+                const res = await apiCall('reject', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Utilisateur refusé', 'info');
+                    loadPending();
+                    loadStats();
+                    loadRejected();
+                } else {
+                    showPopup(data.message || 'Erreur lors du refus', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showPopup('Erreur serveur', 'error');
+            }
+        }
+
+        async function loadRejected() {
+            try {
+                const res = await apiCall('rejected');
+                const data = await res.json();
+                const container = document.getElementById('rejectedList');
+                container.innerHTML = data.length ? data.map(u => `
+                    <div class="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-medium text-gray-800 dark:text-white">${u.prenom} ${u.nom}</div>
+                            <span class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">Refusé</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mb-1">${u.email}</div>
+                        <div class="text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Code:</span>
+                            <span class="font-mono font-bold text-blue-600 dark:text-blue-400">${u.code_etudiant || 'N/A'}</span>
+                        </div>
+                    </div>
+                `).join('') : '<p class="text-gray-500 text-center py-4">Aucun étudiant refusé</p>';
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadPasswordResetRequests() {
+            try {
+                const res = await apiCall('password_reset_requests');
+                const data = await res.json();
+                const container = document.getElementById('passwordResetList');
+                container.innerHTML = data.length ? data.map(r => `
+                    <div class="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <span class="font-bold text-gray-800 dark:text-white">${r.prenom} ${r.nom}</span>
+                                <span class="text-sm text-gray-500 ml-2">${r.email}</span>
+                            </div>
+                            <span class="text-xs px-2 py-1 ${r.statut === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.statut === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'} rounded-full">${r.statut === 'pending' ? 'En attente' : r.statut === 'approved' ? 'Approuvé' : 'Refusé'}</span>
+                        </div>
+                        ${r.message ? `<p class="text-sm text-gray-600 dark:text-gray-300 mb-2">${r.message}</p>` : ''}
+                        <p class="text-xs text-gray-400 mb-2">${new Date(r.created_at).toLocaleDateString('fr-FR')}</p>
+                        ${r.statut === 'pending' ? `
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="approvePasswordReset(${r.id})" class="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">Réinitialiser</button>
+                            <button onclick="rejectPasswordReset(${r.id})" class="flex-1 py-2 bg-gray-400 text-white rounded-lg text-sm hover:bg-gray-500">Refuser</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `).join('') : '<p class="text-gray-500 text-center py-4">Aucune demande</p>';
+            } catch (e) { console.error(e); }
+        }
+
+        async function approvePasswordReset(id) {
+            showConfirm('Réinitialiser le mot de passe de ce chauffeur?', async () => {
+                try {
+                    const res = await apiCall('approve_password_reset', { id });
+                    const data = await res.json();
+                    if (data.success) {
+                        showPopup('Mot de passe réinitialisé: ' + data.new_password, 'success');
+                        loadPasswordResetRequests();
+                    }
+                } catch (e) { showPopup('Erreur', 'error'); }
+            });
+        }
+
+        async function rejectPasswordReset(id) {
+            showConfirm('Refuser cette demande?', async () => {
+                try {
+                    const res = await apiCall('reject_password_reset', { id });
+                    const data = await res.json();
+                    if (data.success) {
+                        showPopup('Demande refusée', 'info');
+                        loadPasswordResetRequests();
+                    }
+                } catch (e) { showPopup('Erreur', 'error'); }
+            });
+        }
+
+        async function loadDrivers() {
+            try {
+                const [dRes, bRes] = await Promise.all([
+                    apiCall('drivers').then(r => r.json()),
+                    apiCall('all_buses').then(r => r.json())
+                ]);
+                const data = dRes, allBuses = bRes;
+                const container = document.getElementById('driversList');
+                container.innerHTML = data.length ? data.map(d => {
+                    const freeBuses = allBuses.filter(b => !b.chauffeur_id || b.chauffeur_id == d.id);
+                    const busOpts = freeBuses.map(b => `<option value="${b.id}" ${b.chauffeur_id == d.id ? 'selected' : ''}>Ligne ${b.ligne_numero} | ${b.immatriculation} | ${b.trajet_depart||''}→${b.trajet_arrivee||''}</option>`).join('');
+                    return `
+                    <div class="p-3 bg-gray-50 dark:bg-slate-700 rounded-xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="min-w-0">
+                                <div class="font-medium text-gray-800 dark:text-white">${d.prenom} ${d.nom}</div>
+                                <div class="text-xs text-gray-500">${d.email}</div>
+                                ${d.immatriculation
+                                    ? `<div class="text-xs text-blue-600 mt-0.5">🚌 ${d.immatriculation} — Ligne ${d.ligne || '?'}</div>`
+                                    : `<div class="text-xs text-red-400 mt-0.5 font-semibold">⚠ Aucun bus assigné</div>`}
+                            </div>
+                            <button onclick="deleteDriver(${d.id})" class="text-red-500 hover:text-red-700 text-sm ml-2 flex-shrink-0">Supprimer</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="busAssign_${d.id}" class="flex-1 px-2 py-1.5 text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg">
+                                <option value="">-- Choisir un bus --</option>
+                                ${busOpts}
+                            </select>
+                            <button onclick="assignDriverBus(${d.id})" class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">Assigner</button>
+                        </div>
+                    </div>`;
+                }).join('') : '<p class="text-gray-500 text-center py-4">Aucun chauffeur</p>';
+            } catch (e) { console.error(e); }
+        }
+
+        async function assignDriverBus(chauffeurId) {
+            const sel = document.getElementById('busAssign_' + chauffeurId);
+            const busId = sel ? sel.value : '';
+            if (!busId) { showPopup('Sélectionnez un bus', 'error'); return; }
+            try {
+                const res = await apiCall('assign_driver_bus', { chauffeur_id: chauffeurId, bus_id: busId });
+                const data = await res.json();
+                if (data.success) { showPopup('Bus assigné', 'success'); loadDrivers(); loadBusesForAssignment(); }
+                else showPopup(data.message || 'Erreur', 'error');
+            } catch { showPopup('Erreur', 'error'); }
+        }
+
+        async function loadLignes() {
+            try {
+                const res = await fetch(API_URL + 'api.php?action=lignes');
+                const lignes = await res.json();
+                const sel = document.getElementById('driverLigne');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">-- Ligne (obligatoire) --</option>' +
+                    lignes.map(l => `<option value="${l.id}">${l.numero} — ${l.nom} (${l.trajet_depart}→${l.trajet_arrivee})</option>`).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadBusesForAssignment() {
+            try {
+                const res = await apiCall('all_buses');
+                const buses = await res.json();
+                const select = document.getElementById('driverBus');
+                if (!select) return;
+                select.innerHTML = '<option value="">-- Assigner un bus (obligatoire) --</option>' +
+                    buses.map(b => {
+                        const label = `Ligne ${b.ligne_numero} | ${b.immatriculation} | ${b.trajet_depart || ''}→${b.trajet_arrivee || ''}`;
+                        const taken = b.chauffeur_id ? ` ✗ ${b.chauffeur_prenom || ''} ${b.chauffeur_nom || ''}` : '';
+                        return `<option value="${b.id}" ${b.chauffeur_id ? 'disabled' : ''}>${label}${taken}</option>`;
+                    }).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        async function loadRoutes() {
+            try {
+                const res = await apiCall('lignes');
+                const data = await res.json();
+                const container = document.getElementById('routesList');
+                container.innerHTML = data.length ? data.map(l => {
+                    const hasBus = l.immatriculation;
+                    const addBusForm = !hasBus ? `
+                        <div class="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+                            <p class="text-xs font-semibold text-yellow-700 dark:text-yellow-400 mb-2">⚠ Aucun bus — ajouter un bus à cette ligne</p>
+                            <div class="flex flex-wrap gap-2">
+                                <input type="text" id="immat_${l.id}" placeholder="Immatriculation *" class="px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg flex-1 min-w-0">
+                                <input type="text" id="marque_${l.id}" placeholder="Marque" class="px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg w-24">
+                                <input type="number" id="places_${l.id}" placeholder="Places" value="40" class="px-3 py-1.5 text-sm bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg w-20">
+                                <button onclick="addBusToLigne(${l.id})" class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">+ Ajouter bus</button>
+                            </div>
+                        </div>` : '';
+                    return `
+                    <div class="p-4 bg-gray-50 dark:bg-slate-700 rounded-xl border-l-4" style="border-left-color: ${l.couleur || '#3b82f6'}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="font-bold text-lg text-gray-800 dark:text-white">${l.numero} - ${l.nom}</div>
+                            <button onclick="deleteRoute(${l.id}, '${l.nom}')" class="text-red-600 hover:text-red-700 text-sm">Supprimer</button>
+                        </div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400 grid grid-cols-2 gap-2">
+                            <span>🚏 ${l.trajet_depart} → ${l.trajet_arrivee}</span>
+                            <span>🕐 ${l.heure_debut} - ${l.heure_fin}</span>
+                            <span>🚌 ${hasBus ? l.immatriculation : '<span class="text-red-500">Aucun bus</span>'}</span>
+                            <span>💺 ${l.places_libres ?? '?'}/${l.places_totales || '?'} places</span>
+                        </div>
+                        ${addBusForm}
+                    </div>`;
+                }).join('') : '<p class="text-gray-500 text-center py-4">Aucune ligne active</p>';
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadIncidents() {
+            try {
+                const res = await apiCall('incidents');
+                const data = await res.json();
+                const container = document.getElementById('incidentsList');
+                container.innerHTML = data.length ? data.map(i => `
+                    <div class="p-3 bg-gray-50 dark:bg-slate-700 rounded-xl">
+                        <div class="flex justify-between">
+                            <span class="font-medium text-gray-800 dark:text-white">${i.type}</span>
+                            <span class="px-2 py-1 rounded text-xs ${i.statut === 'resolu' ? 'bg-green-100' : 'bg-yellow-100'}">${i.statut}</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">${i.description}</p>
+                        ${i.statut !== 'resolu' ? `<button onclick="resolveIncident(${i.id})" class="text-blue-600 text-sm mt-2">Marquer résolu</button>` : ''}
+                    </div>
+                `).join('') : '<p class="text-gray-500 text-center py-4">Aucun incident</p>';
+            } catch (e) { console.error(e); }
+        }
+
+        function _renderSignalement(s) {
+            const auteur = s.nom ? `${s.prenom || ''} ${s.nom}`.trim() : 'Inconnu';
+            const ligne  = s.ligne_numero ? ` · Ligne ${s.ligne_numero}` : '';
+            const date   = s.date_creation ? s.date_creation.slice(0, 16).replace('T', ' ') : '';
+            return `
+            <div class="p-3 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700">
+                <div class="flex justify-between items-start gap-2">
+                    <span class="font-semibold text-gray-800 dark:text-white text-sm capitalize">${s.type}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${s.statut === 'traite' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'}">${s.statut}</span>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${auteur}${ligne}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">${s.description}</p>
+                <div class="flex items-center justify-between mt-2">
+                    <span class="text-xs text-gray-400">${date}</span>
+                    ${s.statut !== 'traite' ? `<button onclick="traiterSignalement(${s.id})" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">Marquer traité</button>` : ''}
+                </div>
+            </div>`;
+        }
+
+        async function loadSignalements() {
+            try {
+                const res  = await apiCall('signalements');
+                const data = await res.json();
+                const etudList    = document.getElementById('signalementsEtudiantList');
+                const chauffList  = document.getElementById('signalementsChauffeurList');
+                const etud   = data.filter(s => s.role === 'etudiant');
+                const chauff = data.filter(s => s.role === 'chauffeur');
+                etudList.innerHTML   = etud.length   ? etud.map(_renderSignalement).join('')   : '<p class="text-gray-500 dark:text-gray-400 text-center text-sm py-4">Aucun signalement étudiant</p>';
+                chauffList.innerHTML = chauff.length  ? chauff.map(_renderSignalement).join('') : '<p class="text-gray-500 dark:text-gray-400 text-center text-sm py-4">Aucun signalement chauffeur</p>';
+            } catch (e) { console.error(e); }
+        }
+
+        async function deleteDriver(id) {
+            showConfirm('Voulez-vous vraiment supprimer ce chauffeur?', () => {
+                deleteDriverConfirm(id);
+            });
+        }
+        
+        async function deleteDriverConfirm(id) {
+            try {
+                const res = await apiCall('delete_driver', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Chauffeur supprimé', 'info');
+                    loadDrivers();
+                    loadStats();
+                }
+            } catch (e) { showPopup('Erreur', 'error'); }
+        }
+
+        async function deleteLigne(id) {
+            showConfirm('Voulez-vous vraiment supprimer cette ligne?', () => {
+                deleteLigneConfirm(id);
+            });
+        }
+        
+        async function deleteLigneConfirm(id) {
+            try {
+                const res = await apiCall('delete_ligne', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Ligne supprimée', 'info');
+                    loadLignes();
+                    loadStats();
+                }
+            } catch (e) { showPopup('Erreur', 'error'); }
+        }
+
+        async function resolveIncident(id) {
+            try {
+                const res = await apiCall('resolve_incident', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Incident résolu', 'success');
+                    loadIncidents();
+                }
+            } catch (e) { showPopup('Erreur', 'error'); }
+        }
+
+        async function traiterSignalement(id) {
+            try {
+                const res = await apiCall('traiter_signalement', { id });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Signalement traité', 'success');
+                    loadSignalements();
+                }
+            } catch (e) { showPopup('Erreur', 'error'); }
+        }
+
+        document.getElementById('createDriverForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nom      = document.getElementById('driverNom').value;
+            const prenom   = document.getElementById('driverPrenom').value;
+            const email    = document.getElementById('driverEmail').value;
+            const password = document.getElementById('driverPassword').value;
+            const ligne_id       = document.getElementById('driverLigne').value || null;
+            const immatriculation = document.getElementById('driverImmat').value.trim();
+            const marque         = document.getElementById('driverMarque').value.trim();
+            const modele         = document.getElementById('driverModele').value.trim();
+            const places_totales = parseInt(document.getElementById('driverPlaces').value || '40');
+            if (!ligne_id)        { showPopup('Sélectionnez une ligne', 'error'); return; }
+            if (!immatriculation) { showPopup('Immatriculation obligatoire', 'error'); return; }
+            try {
+                const res = await apiCall('create_driver', { nom, prenom, email, password, ligne_id, immatriculation, marque, modele, places_totales });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Chauffeur créé', 'success');
+                    e.target.reset();
+                    loadDrivers();
+                    loadStats();
+                    loadBusesForAssignment();
+                } else {
+                    showPopup(data.message, 'error');
+                }
+            } catch (e) { showPopup('Erreur', 'error'); }
+        });
+
+
+
+
+        // ===== GESTION DES ARRÊTS PAR CARTE =====
+        let stopPickerMap = null, pendingStop = null, stopPickerMarker = null;
+        let currentStopLigneId = null, stopFoundMarkers = [];
+
+        function initStopPickerMap() {
+            if (stopPickerMap) { stopPickerMap.resize(); return; }
+            stopPickerMap = new mapboxgl.Map({
+                container: 'stopPickerMap',
+                style: 'https://tiles.openfreemap.org/styles/liberty',
+                center: [3.0588, 36.7538],
+                zoom: 12
+            });
+            stopPickerMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+            stopPickerMap.on('click', onStopMapClick);
+        }
+
+        async function onStopMapClick(e) {
+            if (!currentStopLigneId) {
+                showPopup('Sélectionnez d\'abord une ligne', 'error');
+                return;
+            }
+            const { lat, lng } = e.lngLat;
+            pendingStop = { latitude: lat, longitude: lng };
+            document.getElementById('stopAddPanel').classList.remove('hidden');
+            document.getElementById('stopNameInput').value = 'Chargement...';
+            try {
+                const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`);
+                const d = await r.json();
+                const name = d.name || d.address?.amenity || d.address?.building || d.address?.suburb || d.address?.road || 'Arrêt';
+                document.getElementById('stopNameInput').value = name;
+            } catch { document.getElementById('stopNameInput').value = 'Arrêt'; }
+            if (stopPickerMarker) stopPickerMarker.remove();
+            const el = document.createElement('div');
+            el.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+            stopPickerMarker = new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(stopPickerMap);
+        }
+
+        async function confirmAddStop() {
+            const nom = document.getElementById('stopNameInput').value.trim();
+            if (!nom || !pendingStop || !currentStopLigneId) return;
+            try {
+                const res = await apiCall('add_stop', { ligne_id: currentStopLigneId, nom, latitude: pendingStop.latitude, longitude: pendingStop.longitude });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Arrêt ajouté', 'success');
+                    document.getElementById('stopAddPanel').classList.add('hidden');
+                    pendingStop = null;
+                    if (stopPickerMarker) { stopPickerMarker.remove(); stopPickerMarker = null; }
+                    loadLineStopsForPicker(currentStopLigneId);
+                } else { showPopup(data.message || 'Erreur', 'error'); }
+            } catch { showPopup('Erreur serveur', 'error'); }
+        }
+
+        function cancelAddStop() {
+            pendingStop = null;
+            document.getElementById('stopAddPanel').classList.add('hidden');
+            if (stopPickerMarker) { stopPickerMarker.remove(); stopPickerMarker = null; }
+        }
+
+        function onStopLigneChange() {
+            const sel = document.getElementById('stopLigneSelect');
+            currentStopLigneId = sel.value ? parseInt(sel.value) : null;
+            stopFoundMarkers.forEach(m => m.remove()); stopFoundMarkers = [];
+            if (stopPickerMarker) { stopPickerMarker.remove(); stopPickerMarker = null; }
+            document.getElementById('stopAddPanel').classList.add('hidden');
+            if (currentStopLigneId) loadLineStopsForPicker(currentStopLigneId);
+            else document.getElementById('lineStopsList').innerHTML = '<p class="text-sm text-gray-400">Sélectionnez une ligne</p>';
+        }
+
+        async function loadLineStopsForPicker(ligneId) {
+            try {
+                const res = await apiCall('get_line_stops', { ligne_id: ligneId });
+                const stops = await res.json();
+                stopFoundMarkers.forEach(m => m.remove()); stopFoundMarkers = [];
+                stops.forEach(stop => {
+                    if (!stop.latitude || !stop.longitude) return;
+                    const el = document.createElement('div');
+                    el.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);';
+                    const m = new mapboxgl.Marker({ element: el })
+                        .setLngLat([stop.longitude, stop.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 12 }).setHTML(`<strong>${stop.nom}</strong><br>Arrêt ${stop.ordre}`))
+                        .addTo(stopPickerMap);
+                    stopFoundMarkers.push(m);
+                });
+                const container = document.getElementById('lineStopsList');
+                if (!stops.length) { container.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Aucun arrêt. Cliquez sur la carte ou utilisez "Trouver auto".</p>'; return; }
+                container.innerHTML = stops.map(s => `
+                    <div class="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">${s.ordre}</span>
+                            <span class="text-sm text-gray-800 dark:text-white truncate">${s.nom}</span>
+                        </div>
+                        <button onclick="deleteStopFromLine(${s.id})" class="text-red-500 hover:text-red-700 text-lg flex-shrink-0 leading-none">&times;</button>
+                    </div>`).join('');
+            } catch { showPopup('Erreur chargement arrêts', 'error'); }
+        }
+
+        async function deleteStopFromLine(id) {
+            showConfirm('Supprimer cet arrêt ?', async () => {
+                try {
+                    const res = await apiCall('delete_stop', { id });
+                    const data = await res.json();
+                    if (data.success) { showPopup('Arrêt supprimé', 'success'); loadLineStopsForPicker(currentStopLigneId); }
+                } catch { showPopup('Erreur', 'error'); }
+            });
+        }
+
+        async function loadStopLigneSelect() {
+            try {
+                const res = await fetch(API_URL + 'api.php?action=lignes');
+                const lignes = await res.json();
+                const sel = document.getElementById('stopLigneSelect');
+                const prev = sel.value;
+                sel.innerHTML = '<option value="">-- Sélectionner une ligne --</option>' +
+                    lignes.map(l => `<option value="${l.id}" data-depart="${l.trajet_depart || ''}" data-arrivee="${l.trajet_arrivee || ''}">${l.numero} - ${l.nom}</option>`).join('');
+                if (prev) { sel.value = prev; }
+            } catch { console.error('Erreur chargement lignes stop picker'); }
+        }
+
+        async function autoSearchStops() {
+            if (!currentStopLigneId) { showPopup('Sélectionnez une ligne d\'abord', 'error'); return; }
+            const sel = document.getElementById('stopLigneSelect');
+            const opt = sel.options[sel.selectedIndex];
+            const depart = opt.dataset.depart;
+            const arrivee = opt.dataset.arrivee;
+            if (!depart || !arrivee) { showPopup('Informations de ligne incomplètes', 'error'); return; }
+            const status = document.getElementById('stopSearchStatus');
+            status.textContent = 'Recherche en cours…';
+            try {
+                const [dRes, aRes] = await Promise.all([
+                    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(depart + ', Algérie')}&format=json&limit=1`),
+                    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(arrivee + ', Algérie')}&format=json&limit=1`)
+                ]);
+                const dData = await dRes.json(), aData = await aRes.json();
+                if (!dData.length || !aData.length) { showPopup('Départ ou arrivée introuvable sur la carte', 'error'); status.textContent = ''; return; }
+                const dLat = parseFloat(dData[0].lat), dLng = parseFloat(dData[0].lon);
+                const aLat = parseFloat(aData[0].lat), aLng = parseFloat(aData[0].lon);
+                const pad = 0.015;
+                const south = Math.min(dLat, aLat) - pad, north = Math.max(dLat, aLat) + pad;
+                const west  = Math.min(dLng, aLng) - pad, east  = Math.max(dLng, aLng) + pad;
+                const q = `[out:json][timeout:25];(node["highway"="bus_stop"](${south},${west},${north},${east});node["amenity"="university"](${south},${west},${north},${east});node["amenity"="college"](${south},${west},${north},${east});node["shop"="telecommunication"](${south},${west},${north},${east}););out body;`;
+                const oRes = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+                const oData = await oRes.json();
+                const found = oData.elements || [];
+                status.textContent = `${found.length} point(s) trouvé(s) — cliquez sur un marqueur vert pour l'ajouter`;
+                stopFoundMarkers.forEach(m => m.remove()); stopFoundMarkers = [];
+                if (stopPickerMap) {
+                    const bounds = new mapboxgl.LngLatBounds().extend([west, south]).extend([east, north]);
+                    stopPickerMap.fitBounds(bounds, { padding: 40, maxZoom: 14 });
+                }
+                found.forEach(node => {
+                    const name = node.tags?.name || node.tags?.['name:fr'] || node.tags?.ref || 'Arrêt';
+                    const el = document.createElement('div');
+                    el.style.cssText = 'width:13px;height:13px;border-radius:50%;background:#10b981;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer;';
+                    const safeN = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                    const popup = new mapboxgl.Popup({ offset: 14 }).setHTML(
+                        `<strong>${name}</strong><br><button onclick="addFoundStop(${node.lat},${node.lon},'${safeN}');this.closest('.mapboxgl-popup').remove();" style="margin-top:6px;padding:4px 10px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">+ Ajouter</button>`
+                    );
+                    stopFoundMarkers.push(new mapboxgl.Marker({ element: el }).setLngLat([node.lon, node.lat]).setPopup(popup).addTo(stopPickerMap));
+                });
+            } catch(e) { console.error(e); showPopup('Erreur lors de la recherche', 'error'); status.textContent = ''; }
+        }
+
+        async function addFoundStop(lat, lng, nom) {
+            if (!currentStopLigneId) { showPopup('Sélectionnez une ligne', 'error'); return; }
+            try {
+                const res = await apiCall('add_stop', { ligne_id: currentStopLigneId, nom, latitude: lat, longitude: lng });
+                const data = await res.json();
+                if (data.success) { showPopup(`"${nom}" ajouté`, 'success'); loadLineStopsForPicker(currentStopLigneId); }
+                else showPopup(data.message || 'Erreur', 'error');
+            } catch { showPopup('Erreur', 'error'); }
+        }
+
+        function renderRouteStops() { /* supprimé — gestion arrêts via carte */ }
+
+        function formatImmatAlg(input) {
+            // Format algérien : NNNNN-NNN-NN
+            let v = input.value.replace(/[^0-9]/g, '');
+            if (v.length > 5)  v = v.slice(0,5) + '-' + v.slice(5);
+            if (v.length > 9)  v = v.slice(0,9) + '-' + v.slice(9);
+            if (v.length > 12) v = v.slice(0,12);
+            input.value = v;
+        }
+
+        async function createLigne() {
+            const numero         = document.getElementById('rl_numero')?.value?.trim();
+            const nom            = document.getElementById('rl_nom')?.value?.trim();
+            const trajet_depart  = document.getElementById('rl_depart')?.value?.trim();
+            const trajet_arrivee = document.getElementById('rl_arrivee')?.value?.trim();
+            const heure_debut    = document.getElementById('rl_debut')?.value;
+            const heure_fin      = document.getElementById('rl_fin')?.value;
+            const couleur        = document.getElementById('rl_couleur')?.value || '#3B82F6';
+
+            if (!numero || !nom || !trajet_depart || !trajet_arrivee || !heure_debut || !heure_fin) {
+                showPopup('Veuillez remplir tous les champs', 'error');
+                return;
+            }
+
+            try {
+                const res = await apiCall('create_ligne', { numero, nom, trajet_depart, trajet_arrivee, heure_debut, heure_fin, couleur });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Ligne créée ! Ajoutez un bus depuis la liste ci-dessous.', 'success');
+                    ['rl_numero','rl_nom','rl_depart','rl_arrivee','rl_debut','rl_fin'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                    document.getElementById('rl_couleur').value = '#3B82F6';
+                    loadRoutes();
+                    loadLignes();
+                    loadStats();
+                    loadBusPositions();
+                    loadStopLigneSelect();
+                } else {
+                    showPopup('Erreur : ' + (data.message || 'Inconnu'), 'error');
+                }
+            } catch (err) {
+                showPopup('Erreur serveur', 'error');
+                console.error(err);
+            }
+        }
+
+        async function addBusToLigne(ligneId) {
+            const immatriculation = document.getElementById('immat_' + ligneId)?.value?.trim();
+            const marque          = document.getElementById('marque_' + ligneId)?.value?.trim() || '';
+            const places_totales  = parseInt(document.getElementById('places_' + ligneId)?.value || '40');
+            if (!immatriculation) { showPopup('Immatriculation obligatoire', 'error'); return; }
+            try {
+                const res = await apiCall('add_bus_to_ligne', { ligne_id: ligneId, immatriculation, marque, places_totales });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Bus ajouté à la ligne', 'success');
+                    loadRoutes();
+                    loadBusesForAssignment();
+                    loadStats();
+                } else {
+                    showPopup(data.message || 'Erreur', 'error');
+                }
+            } catch { showPopup('Erreur serveur', 'error'); }
+        }
+
+        async function deleteRoute(id, nom) {
+            showConfirm('Supprimer la ligne "' + nom + '" ?', async () => {
+                try {
+                    const res = await apiCall('delete_ligne', { id });
+                    const data = await res.json();
+                    if (data.success) {
+                        showPopup('Ligne supprimée', 'success');
+                        loadRoutes();
+                        loadLignes();
+                        loadStats();
+                    } else {
+                        showPopup('Erreur suppression', 'error');
+                    }
+                } catch (e) {
+                    showPopup('Erreur serveur', 'error');
+                }
+            });
+        }
+
+        // ===== MODAL DÉTAIL LIGNE EN TEMPS RÉEL =====
+        let _ldMap     = null;
+        let _ldMarker  = null;
+        let _ldTimer   = null;
+        let _ldBusId   = null;
+
+        function openLineDetail(busId) {
+            const bus = _fleetBuses.find(b => parseInt(b.id) === busId);
+            if (!bus) return;
+            _ldBusId = busId;
+            const ligneNum = bus.ligne_numero || '?';
+            const nom      = bus.ligne_nom || '';
+            const couleur  = bus.couleur || '#3b82f6';
+            document.getElementById('ldTitle').textContent    = `${ligneNum} — ${nom}`;
+            document.getElementById('ldSubtitle').textContent = `${bus.immatriculation || ''} · ${bus.trajet_depart || ''} → ${bus.trajet_arrivee || ''}`;
+            document.getElementById('ldColorDot').style.background = couleur;
+            document.getElementById('lineDetailModal').classList.remove('hidden');
+            _refreshLD(bus);
+            clearInterval(_ldTimer);
+            _ldTimer = setInterval(_fetchAndRefreshLD, 3000);
+        }
+
+        function closeLineDetail() {
+            document.getElementById('lineDetailModal').classList.add('hidden');
+            clearInterval(_ldTimer);
+            _ldTimer = null;
+            _ldBusId = null;
+        }
+
+        async function _fetchAndRefreshLD() {
+            if (!_ldBusId) return;
+            try {
+                const res   = await apiCall('all_buses');
+                const buses = await res.json();
+                const bus   = buses.find(b => parseInt(b.id) === _ldBusId);
+                if (bus) _refreshLD(bus);
+            } catch(e) {}
+        }
+
+        function _refreshLD(bus) {
+            const vitesse = Math.round(parseFloat(bus.vitesse) || 0);
+            const accel   = parseFloat(bus.acceleration || 0).toFixed(2);
+            const temp    = bus.temperature != null ? parseFloat(bus.temperature).toFixed(1) : null;
+            const total   = parseInt(bus.places_totales) || 40;
+            const libres  = bus.places_libres != null ? parseInt(bus.places_libres) : total;
+            const service = parseInt(bus.en_service);
+            const moteur  = parseInt(bus.moteur);
+            const couleur = bus.couleur || '#3b82f6';
+
+            document.getElementById('ldVitesse').textContent   = vitesse;
+            document.getElementById('ldAccel').textContent     = accel;
+            document.getElementById('ldTemp').textContent      = temp !== null ? temp : '--';
+            document.getElementById('ldPlaces').textContent    = libres;
+            document.getElementById('ldPlacesOf').textContent  = '/ ' + total;
+            document.getElementById('ldDirection').textContent = bus.direction === 'retour' ? '← Retour' : '→ Aller';
+            document.getElementById('ldImmat').textContent     = bus.immatriculation || '--';
+            const upd = bus.position_updated_at || '';
+            document.getElementById('ldUpdatedAt').textContent = upd ? upd.slice(11, 19) : '--';
+
+            const svcEl = document.getElementById('ldService');
+            if (service) {
+                svcEl.textContent = moteur ? '● Moteur allumé — En service' : '● En service';
+                svcEl.className   = 'text-sm font-bold text-green-600 dark:text-green-400';
+            } else {
+                svcEl.textContent = '○ Arrêté';
+                svcEl.className   = 'text-sm font-bold text-gray-400';
+            }
+
+            const lat = parseFloat(bus.latitude);
+            const lng = parseFloat(bus.longitude);
+            if (!isNaN(lat) && !isNaN(lng) && (Math.abs(lat) > 0.001 || Math.abs(lng) > 0.001)) {
+                if (!_ldMap) {
+                    _ldMap = new maplibregl.Map({
+                        container: 'lineDetailMap',
+                        style: 'https://tiles.openfreemap.org/styles/liberty',
+                        center: [lng, lat], zoom: 14,
+                        attributionControl: false
+                    });
+                    _ldMarker = new maplibregl.Marker({ color: couleur })
+                        .setLngLat([lng, lat]).addTo(_ldMap);
+                } else {
+                    _ldMap.resize();
+                    _ldMarker.setLngLat([lng, lat]);
+                    _ldMap.easeTo({ center: [lng, lat], duration: 700 });
+                }
+            }
+        }
+
+        // Initialisation
+        initMap();
+        loadStats();
+        loadBusFleet();
+        loadChartData();
+        loadActivityLog();
+        loadBusPositions();
+        loadPending();
+        loadStudents();
+        loadRejected();
+        loadPasswordResetRequests();
+        loadDrivers();
+        loadLignes();
+        loadRoutes();
+        loadIncidents();
+        loadSignalements();
+        setInterval(loadBusPositions, 15000);
+        setInterval(() => { loadActivityLog(); loadChartData(); loadBusFleet(); }, 15000);
+
+    </script>
+
+    <!-- Modal : Détail ligne en temps réel -->
+    <div id="lineDetailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onclick="if(event.target===this)closeLineDetail()">
+        <div class="glass w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden dark:bg-slate-900">
+            <!-- Header -->
+            <div class="flex items-start justify-between p-5 border-b border-gray-200 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <span id="ldColorDot" class="w-3 h-3 rounded-full flex-shrink-0" style="background:#3b82f6"></span>
+                    <div>
+                        <h3 id="ldTitle" class="text-lg font-bold text-gray-800 dark:text-white leading-tight"></h3>
+                        <p id="ldSubtitle" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-shrink-0 ml-4">
+                    <span class="text-xs text-green-500 flex items-center gap-1.5 font-medium">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>Live 3s
+                    </span>
+                    <button onclick="closeLineDetail()" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mini-carte -->
+            <div class="p-4 pb-2">
+                <div id="lineDetailMap" style="height:200px;border-radius:0.75rem;background:#1a3a5c;"></div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-4 gap-2 px-4 py-3">
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center">
+                    <div class="text-xs text-gray-400 mb-1">Vitesse</div>
+                    <div id="ldVitesse" class="text-2xl font-bold text-blue-600 dark:text-blue-400">--</div>
+                    <div class="text-xs text-gray-400 mt-0.5">km/h</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center">
+                    <div class="text-xs text-gray-400 mb-1">Accél.</div>
+                    <div id="ldAccel" class="text-2xl font-bold text-purple-600 dark:text-purple-400">--</div>
+                    <div class="text-xs text-gray-400 mt-0.5">m/s²</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center">
+                    <div class="text-xs text-gray-400 mb-1">Température</div>
+                    <div id="ldTemp" class="text-2xl font-bold text-orange-500 dark:text-orange-400">--</div>
+                    <div class="text-xs text-gray-400 mt-0.5">°C</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center">
+                    <div class="text-xs text-gray-400 mb-1">Places libres</div>
+                    <div id="ldPlaces" class="text-2xl font-bold text-green-600 dark:text-green-400">--</div>
+                    <div id="ldPlacesOf" class="text-xs text-gray-400 mt-0.5"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 px-4 pb-4">
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center col-span-1">
+                    <div class="text-xs text-gray-400 mb-1">Direction</div>
+                    <div id="ldDirection" class="text-sm font-semibold text-gray-700 dark:text-gray-300">--</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center col-span-1">
+                    <div class="text-xs text-gray-400 mb-1">Immatriculation</div>
+                    <div id="ldImmat" class="text-xs font-mono font-semibold text-gray-600 dark:text-gray-400">--</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 text-center col-span-1">
+                    <div class="text-xs text-gray-400 mb-1">Statut</div>
+                    <div id="ldService" class="text-xs font-bold text-gray-400">--</div>
+                </div>
+            </div>
+
+            <div class="px-4 pb-4 text-center text-xs text-gray-400 dark:text-gray-500">
+                Dernière position: <span id="ldUpdatedAt" class="font-mono">--</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

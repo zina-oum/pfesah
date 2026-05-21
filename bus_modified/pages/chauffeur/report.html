@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Signalement - Chauffeur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+        .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(10,22,40,0.95); }
+        .dark { color: #e2e8f0; background: #0a1628 !important; }
+        .dark .text-gray-800 { color: #e2e8f0; }
+        .dark .text-gray-700 { color: #cbd5e1; }
+        .dark .text-gray-600 { color: #94a3b8; }
+        .dark .text-gray-500 { color: #64748b; }
+        .dark .bg-gray-50 { background: #0f2942; }
+        .dark .bg-gray-100 { background: #1a3a5c; }
+        .dark .border-gray-200 { border-color: #1a3a5c; }
+        .dark input, .dark select, .dark textarea { background: #0f2942 !important; border-color: #1a3a5c !important; color: #e2e8f0 !important; }
+        .touch-target { min-height: 48px; min-width: 48px; }
+        .large-text { font-size: 1.125rem; line-height: 1.75rem; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] min-h-screen" onload="initDarkMode()">
+    <nav class="glass fixed top-0 w-full z-50 border-b border-gray-200 dark:border-[#1a3a5c]">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center touch-target">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                </div>
+                <span class="font-bold text-gray-800 dark:text-white xl-text">Signalement chauffeur</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleDark()" class="w-12 h-12 rounded-lg bg-gray-200 dark:bg-[#1a3a5c] flex items-center justify-center hover:bg-gray-300 touch-target">
+                    <svg id="darkIcon" class="w-6 h-6 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <button onclick="window.location.href='dashboard.html'" class="text-blue-600 hover:text-blue-800 large-text px-4 py-2 touch-target">Retour</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 px-6 md:px-8 max-w-4xl mx-auto pb-8">
+        <section class="glass rounded-3xl p-8 mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-3">Signalement</h1>
+            <p class="text-gray-600 dark:text-gray-400 large-text">Envoyez un signalement vers la direction générale et informez l'étudiant concerné.</p>
+            <div class="mt-6 bg-blue-50 dark:bg-slate-800 p-5 rounded-3xl">
+                <p class="text-sm text-gray-500 dark:text-gray-400">Chauffeur :</p>
+                <p class="text-xl font-semibold text-gray-800 dark:text-white" id="userName"></p>
+                <p class="mt-3 text-gray-600 dark:text-gray-300 large-text" id="lineInfo">Chargement de la ligne...</p>
+            </div>
+        </section>
+
+        <section class="glass rounded-3xl p-8">
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Je veux signaler</label>
+                <select id="reportTypeSelect" onchange="toggleReportFields()" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-3xl large-text touch-target">
+                    <option value="bus">Problème de bus</option>
+                    <option value="student">Étudiant</option>
+                </select>
+            </div>
+
+            <div id="busFields" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Type de problème</label>
+                    <select id="incidentType" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-3xl large-text touch-target">
+                        <option value="technique">Technique</option>
+                        <option value="mecanique">Mécanique</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Description</label>
+                    <textarea id="incidentDesc" rows="5" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-3xl large-text" placeholder="Expliquez le problème du bus..."></textarea>
+                </div>
+            </div>
+
+            <div id="studentFields" class="hidden space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Code étudiant ou email</label>
+                    <input id="studentIdentifier" type="text" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-3xl large-text touch-target" placeholder="Ex: 123456 ou etudiant@domain.dz">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Type de signalement</label>
+                    <select id="studentReason" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-3xl large-text touch-target">
+                        <option value="comportement">Comportement</option>
+                        <option value="retard">Retard</option>
+                        <option value="securite">Sécurité</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Détails</label>
+                    <textarea id="studentDesc" rows="5" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-3xl large-text" placeholder="Expliquez le signalement de l'étudiant..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-10 grid gap-4 sm:grid-cols-2">
+                <button onclick="submitReport()" class="w-full py-5 bg-red-600 text-white rounded-3xl font-semibold large-text touch-target">Envoyer le signalement</button>
+                <button onclick="window.location.href='dashboard.html'" class="w-full py-5 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-200 rounded-3xl font-semibold large-text touch-target">Annuler</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="../../assets/js/popup.js"></script>
+    <script>
+        const API_URL = '../../backend/';
+        function checkAuth() {
+            const u = JSON.parse(localStorage.getItem('user'));
+            if (!u || u.role !== 'chauffeur') { window.location.replace('../../index.html'); return null; }
+            return u;
+        }
+        const user = checkAuth();
+        if (!user) throw new Error('not auth');
+        let currentLineData = null;
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted || (window.performance && window.performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
+                checkAuth();
+            }
+        });
+
+        document.getElementById('userName').textContent = user ? user.prenom + ' ' + user.nom : '';
+
+        async function loadLineInfo() {
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'my_line', user_id: user.id, user_role: user.role })
+                });
+                const data = await res.json();
+                currentLineData = data;
+                const lineInfo = document.getElementById('lineInfo');
+
+                if (data && data.numero) {
+                    lineInfo.innerHTML = `Ligne <strong>${data.numero}</strong> — <span class="text-gray-700 dark:text-gray-200">${data.nom || 'Nom de ligne indisponible'}</span>`;
+                } else {
+                    lineInfo.innerHTML = `<span class="text-red-600">Aucune ligne assignée actuellement</span>`;
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('lineInfo').textContent = 'Impossible de charger la ligne.';
+            }
+        }
+
+        function toggleReportFields() {
+            const type = document.getElementById('reportTypeSelect').value;
+            document.getElementById('busFields').classList.toggle('hidden', type !== 'bus');
+            document.getElementById('studentFields').classList.toggle('hidden', type !== 'student');
+        }
+
+        async function submitReport() {
+            const type = document.getElementById('reportTypeSelect').value;
+            if (type === 'bus') {
+                const incidentType = document.getElementById('incidentType').value;
+                const description = document.getElementById('incidentDesc').value.trim();
+                if (!description) return showPopup('Veuillez décrire le problème du bus', 'error');
+
+                const payload = {
+                    action: 'report_incident',
+                    user_id: user.id,
+                    user_role: user.role,
+                    bus_id: currentLineData?.bus_id || 0,
+                    ligne_id: currentLineData?.id || 0,
+                    type: incidentType,
+                    description,
+                    priorite: 'moyenne'
+                };
+
+                try {
+                    const res = await fetch(API_URL + 'chauffeur_api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showPopup('Signalement envoyé vers l’admin', 'success');
+                        document.getElementById('incidentDesc').value = '';
+                    } else {
+                        showPopup(data.message || 'Erreur lors de l’envoi', 'error');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    showPopup('Erreur de connexion au serveur', 'error');
+                }
+            } else {
+                const studentIdentifier = document.getElementById('studentIdentifier').value.trim();
+                const studentReason = document.getElementById('studentReason').value;
+                const studentDesc = document.getElementById('studentDesc').value.trim();
+                if (!studentIdentifier) return showPopup('Veuillez entrer le code ou l’email de l’étudiant', 'error');
+                if (!studentDesc) return showPopup('Veuillez saisir les détails du signalement', 'error');
+
+                const payload = {
+                    action: 'report_student',
+                    user_id: user.id,
+                    user_role: user.role,
+                    student_identifier: studentIdentifier,
+                    ligne_id: currentLineData?.id || 0,
+                    type: studentReason,
+                    description: studentDesc
+                };
+
+                try {
+                    const res = await fetch(API_URL + 'chauffeur_api.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showPopup('Le signalement a bien été transmis', 'success');
+                        document.getElementById('studentIdentifier').value = '';
+                        document.getElementById('studentDesc').value = '';
+                    } else {
+                        showPopup(data.message || 'Étudiant non trouvé', 'error');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    showPopup('Erreur de connexion au serveur', 'error');
+                }
+            }
+        }
+
+        loadLineInfo();
+    </script>
+</body>
+</html>

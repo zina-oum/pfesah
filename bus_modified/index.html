@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <script>const mapboxgl = maplibregl;</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        html { scroll-behavior: smooth; }
+        * { font-family: 'Outfit', sans-serif; }
+        
+        .road {
+            background: linear-gradient(90deg, #374151 0%, #374151 45%, #4b5563 45%, #4b5563 55%, #374151 55%, #374151 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .road-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 200%;
+            height: 4px;
+            background: repeating-linear-gradient(90deg, #fbbf24 0px, #fbbf24 40px, transparent 40px, transparent 80px);
+            transform: translateY(-50%);
+        }
+        
+        .hero-bg { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 100%); }
+        .dark .hero-bg { background: linear-gradient(180deg, #0a1628 0%, #0f2942 50%, #1a3a5c 100%); }
+        
+        .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(10,22,40,0.95); }
+        
+        .nav-glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+        .dark .nav-glass { background: rgba(10,22,40,0.98); }
+        
+        .dark { color: #e2e8f0; }
+        .dark .text-gray-800 { color: #e2e8f0; }
+        .dark .text-gray-700 { color: #cbd5e1; }
+        .dark .text-gray-600 { color: #94a3b8; }
+        .dark .text-gray-500 { color: #64748b; }
+        .dark .bg-gray-50 { background: #0a1628; }
+        .dark .bg-white { background: #0f2942; }
+        .dark .hover\:bg-gray-50:hover { background: #1a3a5c; }
+        .dark a:not(.text-blue-600):not(.bg-blue-600) { color: #60a5fa; }
+        .dark h1 { color: #e2e8f0 !important; }
+        .dark h1 span { color: #60a5fa !important; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] transition-colors min-h-screen" >
+    <nav class="nav-glass fixed top-0 w-full z-50 border-b border-gray-200/50 dark:border-slate-700/50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                </div>
+                <span class="brand-text text-xl font-bold text-gray-800 dark:text-white">BUS</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="#faq" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 font-medium">FAQ</a>
+                <button onclick="toggleDark()" class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 transition">
+                    <svg id="darkIcon" class="w-5 h-5 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <a href="pages/auth/login.html" class="px-5 py-2.5 text-blue-600 font-medium hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg">Connexion</a>
+                <a href="pages/auth/register.html" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">Inscription</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-bg pt-28 pb-16 px-6">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 items-center">
+            <div class="hero-text">
+                <span class="inline-flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-slate-800/80 rounded-full text-blue-600 text-sm font-medium mb-6">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    Suivi en temps réel
+                </span>
+                <h1 class="text-4xl md:text-5xl font-bold text-gray-800 dark:text-white mb-4 leading-tight">
+                    Votre transport<br><span class="text-blue-600">universitaire</span>
+                </h1>
+                <p class="text-gray-600 dark:text-gray-300 text-lg mb-8 max-w-md">Suivez les bus en temps réel et planifiez vos trajets vers le campus.</p>
+                <a href="#map" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition">Voir la carte</a>
+            </div>
+            <div class="hero-bus flex flex-col items-center justify-center">
+                <div class="relative w-full max-w-md">
+                                                                                                    <svg id="hero-bus-img" class="mx-auto" style="max-width:100%;filter:drop-shadow(0 12px 28px rgba(21,101,168,0.28));" viewBox="0 0 400 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <!-- shadow -->
+                      <ellipse cx="200" cy="208" rx="185" ry="8" fill="#1043a0" opacity="0.10"/>
+                      <!-- body — retourné : nez à droite -->
+                      <path d="M386 172 L386 118 Q386 86 364 74 L324 68 L28 68 Q6 68 4 88 L4 172 Z" fill="#1d4ed8"/>
+                      <!-- top shine -->
+                      <path d="M364 74 Q386 86 386 112 L386 96 Q384 70 360 66 L28 66 Q4 66 2 88 L4 88 Q6 68 28 68 L324 68 Z" fill="#60a5fa" opacity="0.28"/>
+                      <!-- dark lower band -->
+                      <rect x="4" y="160" width="382" height="18" fill="#1e3a8a"/>
+                      <!-- cyan stripes -->
+                      <rect x="4" y="156" width="382" height="3.5" fill="#93c5fd" opacity="0.9"/>
+                      <rect x="4" y="162" width="382" height="2" fill="#93c5fd" opacity="0.45"/>
+                      <!-- windshield slanted — à droite -->
+                      <path d="M364 74 L364 148 L314 148 L314 68 L338 68 Z" fill="#0f172a" opacity="0.88"/>
+                      <path d="M362 78 L344 70 L362 70 Z" fill="white" opacity="0.07"/>
+                      <line x1="339" y1="68" x2="339" y2="148" stroke="#3b82f6" stroke-width="1.2" opacity="0.3"/>
+                      <!-- windows -->
+                      <rect x="250" y="76" width="58" height="58" rx="9" fill="#0f172a"/>
+                      <rect x="184" y="76" width="58" height="58" rx="9" fill="#0f172a"/>
+                      <rect x="118" y="76" width="58" height="58" rx="9" fill="#0f172a"/>
+                      <rect x="52"  y="76" width="58" height="58" rx="9" fill="#0f172a"/>
+                      <rect x="22"  y="76" width="22" height="58" rx="7" fill="#0f172a"/>
+                      <!-- window glare -->
+                      <rect x="252" y="78" width="20" height="10" rx="3" fill="white" opacity="0.08"/>
+                      <rect x="186" y="78" width="20" height="10" rx="3" fill="white" opacity="0.08"/>
+                      <rect x="120" y="78" width="20" height="10" rx="3" fill="white" opacity="0.08"/>
+                      <rect x="54"  y="78" width="20" height="10" rx="3" fill="white" opacity="0.08"/>
+                      <!-- front nose — droite -->
+                      <path d="M386 118 Q386 86 364 74 L364 172 L386 172 Z" fill="#1e40af"/>
+                      <!-- headlight yellow round — droite -->
+                      <circle cx="384" cy="148" r="9" fill="#f59e0b"/>
+                      <circle cx="384" cy="148" r="5" fill="#fde68a"/>
+                      <circle cx="383" cy="147" r="2" fill="white" opacity="0.5"/>
+                      <!-- rear tail — gauche -->
+                      <rect x="2" y="140" width="12" height="18" rx="4" fill="#dc2626"/>
+                      <rect x="3" y="141" width="10" height="7" rx="2" fill="#fca5a5" opacity="0.6"/>
+                      <!-- bumpers -->
+                      <rect x="356" y="172" width="36" height="8" rx="4" fill="#172554"/>
+                      <rect x="2"   y="172" width="38" height="8" rx="4" fill="#172554"/>
+                      <!-- wiper — droite -->
+                      <line x1="362" y1="124" x2="334" y2="80" stroke="#1e3a5f" stroke-width="2" stroke-linecap="round"/>
+                      <!-- door -->
+                      <line x1="74"  y1="134" x2="74"  y2="178" stroke="#3b82f6" stroke-width="2" opacity="0.35"/>
+                      <line x1="44"  y1="134" x2="44"  y2="178" stroke="#3b82f6" stroke-width="2" opacity="0.35"/>
+                      <!-- wheel arches -->
+                      <path d="M292 178 Q324 166 356 178" stroke="#1e3a8a" stroke-width="4" fill="none"/>
+                      <path d="M114 178 Q146 166 178 178" stroke="#1e3a8a" stroke-width="4" fill="none"/>
+                      <!-- wheel 1 -->
+                      <circle cx="324" cy="188" r="13" fill="#111827"/>
+                      <circle cx="324" cy="188" r="8"   fill="#1f2937"/>
+                      <circle cx="324" cy="188" r="4.5" fill="#374151"/>
+                      <circle cx="324" cy="188" r="1.8" fill="#94a3b8"/>
+                      <line x1="324" y1="183" x2="324" y2="193" stroke="#cbd5e1" stroke-width="1.4" stroke-linecap="round"/>
+                      <line x1="319" y1="188" x2="329" y2="188" stroke="#cbd5e1" stroke-width="1.4" stroke-linecap="round"/>
+                      <line x1="321" y1="184" x2="327" y2="192" stroke="#cbd5e1" stroke-width="1.1" stroke-linecap="round"/>
+                      <line x1="327" y1="184" x2="321" y2="192" stroke="#cbd5e1" stroke-width="1.1" stroke-linecap="round"/>
+                      <path d="M315 183 A8 8 0 0 1 326 177" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.18"/>
+                      <!-- wheel 2 -->
+                      <circle cx="146" cy="188" r="13" fill="#111827"/>
+                      <circle cx="146" cy="188" r="8"   fill="#1f2937"/>
+                      <circle cx="146" cy="188" r="4.5" fill="#374151"/>
+                      <circle cx="146" cy="188" r="1.8" fill="#94a3b8"/>
+                      <line x1="146" y1="183" x2="146" y2="193" stroke="#cbd5e1" stroke-width="1.4" stroke-linecap="round"/>
+                      <line x1="141" y1="188" x2="151" y2="188" stroke="#cbd5e1" stroke-width="1.4" stroke-linecap="round"/>
+                      <line x1="143" y1="184" x2="149" y2="192" stroke="#cbd5e1" stroke-width="1.1" stroke-linecap="round"/>
+                      <line x1="149" y1="184" x2="143" y2="192" stroke="#cbd5e1" stroke-width="1.1" stroke-linecap="round"/>
+                      <path d="M137 183 A8 8 0 0 1 148 177" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.18"/>
+                    </svg>
+                    <div class="road h-4 w-full max-w-md mx-auto rounded-full mt-2 shadow-inner">
+                        <div class="road-line"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="map" class="max-w-7xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white text-center mb-6">Position des bus</h2>
+        <div class="glass rounded-3xl p-2 shadow-2xl" style="height: 420px;">
+            <div id="busMap" class="rounded-2xl overflow-hidden" style="height: 100%;"></div>
+        </div>
+        <!-- Légende des lignes -->
+        <div id="legend" class="glass rounded-2xl p-4 mt-4 shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-3">Lignes de bus</h3>
+            <div id="legendContent" class="flex flex-wrap gap-3"></div>
+        </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-6 py-12">
+        <div class="grid md:grid-cols-3 gap-6">
+            <div class="glass rounded-2xl p-6 text-center hover:scale-105 transition duration-300">
+                <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path d="M5.5 10a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm7.5 3a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6z"/></svg>
+                </div>
+                <h3 class="font-semibold text-gray-800 dark:text-white mb-2">GPS en direct</h3>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Suivez la position exacte</p>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center hover:scale-105 transition duration-300">
+                <div class="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                </div>
+                <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Horaires</h3>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Tous les horaires</p>
+            </div>
+            <div class="glass rounded-2xl p-6 text-center hover:scale-105 transition duration-300">
+                <div class="w-14 h-14 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20"><path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"/><path d="M6 3a2 2 0 00-2 2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z"/></svg>
+                </div>
+                <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Accessible</h3>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">Sur tous vos appareils</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white text-center mb-8">Comment ça marche ?</h2>
+        <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shrink-0">1</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Inscription</h3>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Créez un compte avec votre email universitaire et votre code étudiant. L'admin valide votre inscription.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shrink-0">2</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Suivez les bus</h3>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm"> Consultez la carte en temps réel pour voir où sont les bus et leur disponibilité en places.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shrink-0">3</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Réservation</h3>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Réservez votre place à l'avance pour garantir un siège dans le bus.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shrink-0">4</div>
+                    <div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Signalement</h3>
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">Signalez tout problème (retard, comportement, sécurité) directement depuis l'app.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="max-w-7xl mx-auto px-6 py-12">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white text-center mb-8">Questions fréquentes</h2>
+        <div class="max-w-3xl mx-auto space-y-4">
+            <div class="glass rounded-xl p-5">
+                <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full flex justify-between items-center text-left">
+                    <span class="font-medium text-gray-800 dark:text-white">Comment s'inscrire ?</span>
+                    <span class="text-blue-600 text-xl">+</span>
+                </button>
+                <div class="hidden mt-3 text-gray-600 dark:text-gray-400">Cliquez sur inscription et remplissez le formulaire.</div>
+            </div>
+            <div class="glass rounded-xl p-5">
+                <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full flex justify-between items-center text-left">
+                    <span class="font-medium text-gray-800 dark:text-white">Comment suivre les bus ?</span>
+                    <span class="text-blue-600 text-xl">+</span>
+                </button>
+                <div class="hidden mt-3 text-gray-600 dark:text-gray-400">La carte affiche la position en temps réel.</div>
+            </div>
+            <div class="glass rounded-xl p-5">
+                <button onclick="this.nextElementSibling.classList.toggle('hidden')" class="w-full flex justify-between items-center text-left">
+                    <span class="font-medium text-gray-800 dark:text-white">Comment contacter le support ?</span>
+                    <span class="text-blue-600 text-xl">+</span>
+                </button>
+                <div class="hidden mt-3 text-gray-600 dark:text-gray-400">Contactez-nous par email à <a href="mailto:support@bus-system.com" class="text-blue-600 hover:underline">support@bus-system.com</a></div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-white dark:bg-slate-800 py-8 border-t border-gray-200 dark:border-slate-700">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-gray-500 dark:text-gray-400">© 2026 BUS. Tous droits réservés.</p>
+            <div class="flex gap-6">
+                <a href="#map" class="text-gray-500 hover:text-blue-600">Carte</a>
+                <a href="#faq" class="text-gray-500 hover:text-blue-600">FAQ</a>
+                <a href="mailto:support@bus-system.com" class="text-gray-500 hover:text-blue-600">Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const API_URL = './backend/';
+
+        // ── Dark mode ──────────────────────────────────────────────
+        function initDarkMode() {
+            if (localStorage.getItem('dark') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        function toggleDark() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('dark', isDark);
+        }
+        initDarkMode();
+
+        // ── GSAP animations ────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            // Entrée du texte hero
+            gsap.from('.hero-text', { x: -80, opacity: 0, duration: 1.2, ease: 'power3.out', delay: 0.3 });
+
+            // Entrée du bus image avec rebond
+            gsap.from('#hero-bus-img', { y: 60, opacity: 0, duration: 1.2, ease: 'back.out(1.7)', delay: 0.5 });
+
+            // Entrée de la route
+            gsap.from('.hero-bus .road', { scaleX: 0, opacity: 0, duration: 0.8, ease: 'power2.out', delay: 0.9 });
+
+            // Bus qui avance de gauche à droite en boucle
+            gsap.to('#hero-bus-img', {
+                x: 28,
+                duration: 3.5,
+                ease: 'sine.inOut',
+                yoyo: true,
+                repeat: -1,
+                delay: 1.5
+            });
+
+            // Légère oscillation verticale (effet suspension route)
+            gsap.to('#hero-bus-img', {
+                y: -5,
+                duration: 1.8,
+                ease: 'sine.inOut',
+                yoyo: true,
+                repeat: -1,
+                delay: 1.5
+            });
+
+            // Route qui défile — ralentie
+            gsap.to('.road-line', {
+                x: '-50%',
+                duration: 1.8,
+                repeat: -1,
+                ease: 'none'
+            });
+        });
+
+        const map = new mapboxgl.Map({
+            container: 'busMap',
+            style: 'https://tiles.openfreemap.org/styles/liberty',
+            center: [3.0588, 36.7538],
+            zoom: 13
+        });
+
+        const busMarkers = [];
+        const stopMarkers = [];
+        const routeLayers = [];
+        function clearBusMarkers() {
+            while (busMarkers.length) {
+                busMarkers.pop().remove();
+            }
+        }
+        function clearStopMarkers() {
+            while (stopMarkers.length) {
+                stopMarkers.pop().remove();
+            }
+        }
+        function clearRouteLayers() {
+            routeLayers.forEach(layer => {
+                if (map.getLayer(layer.id)) map.removeLayer(layer.id);
+                if (map.getSource(layer.source)) map.removeSource(layer.source);
+            });
+            routeLayers.length = 0;
+        }
+
+        async function updateBuses() {
+            try {
+                const [busRes, stopRes, lignesRes] = await Promise.all([
+                    fetch(API_URL + 'api.php?action=positions'),
+                    fetch(API_URL + 'api.php?action=arrets'),
+                    fetch(API_URL + 'api.php?action=lignes')
+                ]);
+                const buses = await busRes.json();
+                const stops = await stopRes.json();
+                const lignes = await lignesRes.json();
+                clearBusMarkers();
+                clearStopMarkers();
+                clearRouteLayers();
+
+                const validBuses = buses.filter(bus => bus.latitude && bus.longitude);
+                const validStops = stops.filter(stop => stop.latitude && stop.longitude);
+
+                // Display routes
+                const routes = validStops.reduce((acc, stop) => {
+                    if (!acc[stop.ligne_id]) acc[stop.ligne_id] = [];
+                    acc[stop.ligne_id].push({
+                        coordinate: [stop.longitude, stop.latitude],
+                        order: Number(stop.ordre || 0)
+                    });
+                    return acc;
+                }, {});
+
+                Object.entries(routes).forEach(([ligneId, stopsCoords]) => {
+                    const ligne = lignes.find(l => l.id == ligneId);
+                    if (!ligne) return;
+
+                    const coords = stopsCoords
+                        .sort((a, b) => a.order - b.order)
+                        .map(item => item.coordinate)
+                        .filter(coord => coord[0] !== null && coord[1] !== null);
+
+                    if (coords.length < 2) return;
+
+                    const geojson = {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: coords
+                        }
+                    };
+
+                    const sourceId = `route-${ligneId}`;
+                    const layerId = `route-layer-${ligneId}`;
+
+                    map.addSource(sourceId, {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    map.addLayer({
+                        id: layerId,
+                        type: 'line',
+                        source: sourceId,
+                        layout: {
+                            'line-cap': 'round',
+                            'line-join': 'round'
+                        },
+                        paint: {
+                            'line-color': ligne.couleur || '#2563eb',
+                            'line-width': 6,
+                            'line-opacity': 0.9
+                        }
+                    });
+
+                    routeLayers.push({ id: layerId, source: sourceId });
+                });
+
+                // Display stops
+                validStops.forEach(stop => {
+                    const stopEl = document.createElement('div');
+                    stopEl.style.width = '12px';
+                    stopEl.style.height = '12px';
+                    stopEl.style.borderRadius = '50%';
+                    stopEl.style.background = '#3b82f6';
+                    stopEl.style.border = '2px solid white';
+                    stopEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+
+                    const marker = new mapboxgl.Marker({ element: stopEl })
+                        .setLngLat([stop.longitude, stop.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                            `<b>${stop.nom}</b><br>Ligne ${stop.ligne_numero || stop.ligne_id}`
+                        ))
+                        .addTo(map);
+                    stopMarkers.push(marker);
+                });
+
+                if (validBuses.length === 0) {
+                    console.warn('Aucune position de bus valide trouvée. Le plan continue en affichant les lignes disponibles.');
+                }
+
+                const bounds = new mapboxgl.LngLatBounds();
+                validBuses.forEach(bus => {
+                    const color = bus.en_service ? '#22c55e' : '#9ca3af';
+                    const markerEl = document.createElement('div');
+                    markerEl.style.width = '40px';
+                    markerEl.style.height = '40px';
+                    markerEl.style.borderRadius = '50%';
+                    markerEl.style.background = color;
+                    markerEl.style.border = '2px solid white';
+                    markerEl.style.boxShadow = '0 8px 20px rgba(0,0,0,0.15)';
+                    markerEl.style.color = '#fff';
+                    markerEl.style.display = 'flex';
+                    markerEl.style.alignItems = 'center';
+                    markerEl.style.justifyContent = 'center';
+                    markerEl.style.fontSize = '12px';
+                    markerEl.style.fontWeight = '700';
+                    markerEl.textContent = bus.numero;
+
+                    const marker = new mapboxgl.Marker({ element: markerEl })
+                        .setLngLat([bus.longitude, bus.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                            `<b>Ligne ${bus.numero}</b><br>${bus.nom || 'Bus'}<br>${bus.trajet_depart || ''} → ${bus.trajet_arrivee || ''}<br>Places libres: ${bus.places_libres || 0}/${bus.places_totales || '–'}<br>Vitesse: ${bus.vitesse || 0} km/h<br>Accélération: ${bus.acceleration || 0} m/s²<br><strong>${bus.en_service ? 'En service' : 'À l’arrêt'}</strong>`
+                        ))
+                        .addTo(map);
+                    busMarkers.push(marker);
+                    bounds.extend([bus.longitude, bus.latitude]);
+                });
+
+                // Include stops in bounds
+                validStops.forEach(stop => bounds.extend([stop.longitude, stop.latitude]));
+
+                if (validBuses.length === 1) {
+                    map.setCenter([validBuses[0].longitude, validBuses[0].latitude]);
+                    map.setZoom(13);
+                } else if (!bounds.isEmpty()) {
+                    map.fitBounds(bounds, { padding: 40, maxZoom: 14 });
+                } else {
+                    map.setCenter([3.0588, 36.7538]);
+                    map.setZoom(13);
+                }
+
+                // Créer la légende des lignes
+                const legendContainer = document.getElementById('legendContent');
+                if (legendContainer) {
+                    legendContainer.innerHTML = '';
+                    lignes.forEach(ligne => {
+                        if (ligne.actif) {
+                            const legendItem = document.createElement('div');
+                            legendItem.className = 'flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-slate-700 rounded-lg';
+                            legendItem.innerHTML = `
+                                <div class="w-4 h-4 rounded-full" style="background-color: ${ligne.couleur || '#3B82F6'}"></div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">${ligne.numero}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">${ligne.nom}</span>
+                            `;
+                            legendContainer.appendChild(legendItem);
+                        }
+                    });
+                }
+            } catch(e) {
+                console.log('API non disponible - mode démo', e);
+            }
+        }
+
+        map.on('load', () => {
+            map.resize();
+            updateBuses();
+            setInterval(updateBuses, 15000);
+        });
+    </script>
+    <script src="assets/js/i18n.js"></script>
+</body>
+</html>

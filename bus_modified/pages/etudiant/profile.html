@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mon Profil - BUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+        .glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+        .dark .glass { background: rgba(10,22,40,0.95); }
+        .dark { color: #e2e8f0; background: #0a1628 !important; }
+        .dark .text-gray-800 { color: #e2e8f0; }
+        .dark .text-gray-700 { color: #cbd5e1; }
+        .dark .text-gray-600 { color: #94a3b8; }
+        .dark .text-gray-500 { color: #64748b; }
+        .dark .bg-gray-50 { background: #0f2942; }
+        .dark .bg-gray-100 { background: #1a3a5c; }
+        .dark .border-gray-200 { border-color: #1a3a5c; }
+        .dark input, .dark select, .dark textarea { background: #0f2942; border-color: #1a3a5c; color: #e2e8f0; }
+        /* Optimisations tablette */
+        .touch-target { min-height: 48px; min-width: 48px; }
+        .large-text { font-size: 1.125rem; line-height: 1.75rem; }
+        .xl-text { font-size: 1.25rem; line-height: 1.75rem; }
+        .profile-photo { width: 120px; height: 120px; }
+        @media (min-width: 768px) {
+            .profile-photo { width: 160px; height: 160px; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] min-h-screen" onload="initDarkMode()">
+    <nav class="glass fixed top-0 w-full z-50 border-b border-gray-200 dark:border-[#1a3a5c]">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center touch-target">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                </div>
+                <span class="font-bold text-gray-800 dark:text-white xl-text">BUS</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="dashboard.html" class="text-blue-600 hover:text-blue-700 large-text touch-target px-4 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20">← Retour</a>
+                <button onclick="toggleDark()" class="w-12 h-12 rounded-lg bg-gray-200 dark:bg-[#1a3a5c] flex items-center justify-center hover:bg-gray-300 touch-target">
+                    <svg id="darkIcon" class="w-6 h-6 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                </button>
+                <button onclick="logout()" class="text-red-500 hover:text-red-700 large-text px-4 py-2 touch-target" data-i18n="logout">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-24 px-6 md:px-8 max-w-6xl mx-auto pb-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-2">Mon Profil</h1>
+            <p class="text-gray-500 dark:text-gray-400 large-text">Gérez vos informations personnelles</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Photo de profil -->
+            <div class="glass rounded-2xl p-8 text-center">
+                <div class="relative inline-block mb-6">
+                    <img id="profilePhoto" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" class="profile-photo rounded-full mx-auto object-cover border-4 border-blue-500">
+                    <label for="photoInput" class="absolute bottom-0 right-0 bg-blue-600 text-white p-4 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg touch-target">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </label>
+                    <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="uploadPhoto(this)">
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-2" id="userName"></h3>
+                <p class="text-gray-500 dark:text-gray-400 large-text mb-2" id="userEmail"></p>
+                <p class="text-sm text-blue-600 large-text" id="userCode"></p>
+            </div>
+
+            <!-- Informations personnelles -->
+            <div class="md:col-span-2 space-y-8">
+                <!-- Infos de base -->
+                <div class="glass rounded-2xl p-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-6">Informations personnelles</h2>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Nom</label>
+                            <input type="text" id="nom" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Prénom</label>
+                            <input type="text" id="prenom" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Email</label>
+                            <input type="email" id="email" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Code étudiant</label>
+                            <input type="text" id="code_etudiant" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Téléphone</label>
+                            <input type="tel" id="telephone" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" placeholder="Non défini" maxlength="10" pattern="[0-9]{10}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Statut</label>
+                            <input type="text" id="statut" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" readonly>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex gap-4">
+                        <button onclick="saveProfile()" class="px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition large-text touch-target">Sauvegarder</button>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 large-text self-center">Membre depuis le <span id="created_at"></span></p>
+                    </div>
+                </div>
+
+                <!-- Changer mot de passe -->
+                <div class="glass rounded-2xl p-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-6">Sécurité</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Mot de passe actuel</label>
+                            <input type="password" id="currentPassword" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" placeholder="Votre mot de passe actuel">
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Nouveau mot de passe</label>
+                                <input type="password" id="newPassword" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" placeholder="Minimum 6 caractères">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Confirmer</label>
+                                <input type="password" id="confirmPassword" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target" placeholder="Confirmez le nouveau mot de passe">
+                            </div>
+                        </div>
+                        <button onclick="changePassword()" class="w-full py-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition large-text touch-target">Changer le mot de passe</button>
+                    </div>
+                </div>
+
+                <!-- Statistiques -->
+                <div class="glass rounded-2xl p-8">
+                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-white mb-6">Mes statistiques</h2>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="text-center p-6 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                            <p class="text-4xl font-bold text-blue-600 mb-2" id="totalReservations">0</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 large-text">Réservations totales</p>
+                        </div>
+                        <div class="text-center p-6 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                            <p class="text-4xl font-bold text-green-600 mb-2" id="activeReservations">0</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 large-text">Réservations actives</p>
+                        </div>
+                        <div class="text-center p-6 bg-gray-50 dark:bg-slate-800 rounded-xl">
+                            <p class="text-4xl font-bold text-purple-600 mb-2" id="completedReservations">0</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 large-text">Trajets terminés</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../../assets/js/popup.js"></script>
+    <script src="../../assets/js/i18n.js"></script>
+    <script>
+        const API_URL = '../../backend/';
+        let userProfile = {};
+
+        function checkAuth() {
+            const u = JSON.parse(localStorage.getItem('user'));
+            if (!u || u.role !== 'etudiant') { window.location.replace('../../index.html'); return null; }
+            return u;
+        }
+        const user = checkAuth();
+        if (!user) throw new Error('not auth');
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted || (window.performance && window.performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
+                checkAuth();
+            }
+        });
+
+        function initDarkMode() {
+            if (localStorage.getItem('dark') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+            loadProfile();
+            loadStats();
+        }
+
+        async function loadProfile() {
+            try {
+                const res = await fetch(API_URL + 'etudiant_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'profile', user_id: user.id, user_role: user.role })
+                });
+                const data = await res.json();
+
+                if (data) {
+                    userProfile = data;
+                    document.getElementById('userName').textContent = data.nom + ' ' + data.prenom;
+                    document.getElementById('userEmail').textContent = data.email;
+                    document.getElementById('userCode').textContent = 'Code: ' + data.code_etudiant;
+                    document.getElementById('nom').value = data.nom;
+                    document.getElementById('prenom').value = data.prenom;
+                    document.getElementById('email').value = data.email;
+                    document.getElementById('code_etudiant').value = data.code_etudiant;
+                    document.getElementById('telephone').value = data.telephone || '';
+                    document.getElementById('statut').value = data.statut === 'validated' ? 'Validé' : 'En attente';
+                    document.getElementById('created_at').textContent = new Date(data.created_at).toLocaleDateString('fr-FR');
+
+                    if (data.photo) {
+                        document.getElementById('profilePhoto').src = data.photo;
+                    }
+                }
+            } catch (err) {
+                console.error('Erreur chargement profil:', err);
+                showPopup('Erreur de chargement du profil', 'error');
+            }
+        }
+
+        async function loadStats() {
+            try {
+                // Réservations actives
+                const activeRes = await fetch(API_URL + 'etudiant_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'my_reservations', user_id: user.id, user_role: user.role })
+                });
+                const activeData = await activeRes.json();
+                document.getElementById('activeReservations').textContent = Array.isArray(activeData) ? activeData.length : 0;
+
+                // Historique complet
+                const historyRes = await fetch(API_URL + 'etudiant_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reservation_history', user_id: user.id, user_role: user.role })
+                });
+                const historyData = await historyRes.json();
+                const total = Array.isArray(historyData) ? historyData.length : 0;
+                document.getElementById('totalReservations').textContent = total;
+
+                // Trajets terminés (date passée)
+                const completed = Array.isArray(historyData) ? historyData.filter(r => new Date(r.date_reservation) < new Date()).length : 0;
+                document.getElementById('completedReservations').textContent = completed;
+            } catch (err) {
+                console.error('Erreur chargement stats:', err);
+            }
+        }
+
+        async function uploadPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('photo', file);
+            formData.append('user_id', user.id);
+            formData.append('user_role', user.role);
+
+            try {
+                const res = await fetch(API_URL + 'upload_photo.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('profilePhoto').src = data.photo_url;
+                    showPopup('Photo mise à jour!', 'success');
+                } else {
+                    showPopup(data.message || 'Erreur upload', 'error');
+                }
+            } catch (err) {
+                showPopup('Erreur upload photo', 'error');
+            }
+        }
+
+        async function saveProfile() {
+            const nom = document.getElementById('nom').value.trim();
+            const prenom = document.getElementById('prenom').value.trim();
+            const telephone = document.getElementById('telephone').value.trim();
+
+            if (!nom || !prenom) {
+                showPopup('Nom et prénom sont obligatoires', 'error');
+                return;
+            }
+
+            if (telephone && !/^[0-9]{10}$/.test(telephone)) {
+                showPopup('Le numéro de téléphone doit contenir exactement 10 chiffres', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + 'etudiant_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update_profile',
+                        user_id: user.id,
+                        user_role: user.role,
+                        nom: nom,
+                        prenom: prenom,
+                        telephone: telephone
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showPopup('Profil mis à jour avec succès!', 'success');
+                    // Update local user data
+                    user.nom = nom;
+                    user.prenom = prenom;
+                    user.telephone = telephone;
+                    localStorage.setItem('user', JSON.stringify(user));
+                } else {
+                    showPopup(data.message || 'Erreur mise à jour profil', 'error');
+                }
+            } catch (err) {
+                showPopup('Erreur serveur', 'error');
+            }
+        }
+
+        async function changePassword() {
+            const current = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+
+            if (!current || !newPass || !confirm) {
+                showPopup('Veuillez remplir tous les champs', 'error');
+                return;
+            }
+
+            if (newPass !== confirm) {
+                showPopup('Les mots de passe ne correspondent pas', 'error');
+                return;
+            }
+
+            if (newPass.length < 6) {
+                showPopup('Mot de passe minimum 6 caractères', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_URL + 'etudiant_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'change_password',
+                        user_id: user.id,
+                        user_role: user.role,
+                        current_password: current,
+                        new_password: newPass
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showPopup('Mot de passe changé avec succès!', 'success');
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else {
+                    showPopup(data.message || 'Erreur changement mot de passe', 'error');
+                }
+            } catch (err) {
+                showPopup('Erreur serveur', 'error');
+            }
+        }
+
+        function toggleDark() {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.setItem('dark', isDark);
+            const icon = document.getElementById('darkIcon');
+            icon.innerHTML = isDark ?
+                '<path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>' :
+                '<path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>';
+        }
+
+        function logout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('remember');
+            window.location.href = '../../index.html';
+        }
+    </script>
+</body>
+</html>

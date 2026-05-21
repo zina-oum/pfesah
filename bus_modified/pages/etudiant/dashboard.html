@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Étudiant - BUS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"/>
+<script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+<script>const mapboxgl = maplibregl;</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>tailwind.config = { darkMode: 'class' }</script>
+<style>
+* { font-family: 'Outfit', sans-serif; }
+.glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); }
+.dark .glass { background: rgba(10,22,40,0.95); }
+.dark { color: #e2e8f0; background: #0a1628; }
+.dark .text-gray-800 { color: #e2e8f0; }
+.dark .text-gray-700 { color: #cbd5e1; }
+.dark .text-gray-600 { color: #94a3b8; }
+.dark .text-gray-500 { color: #64748b; }
+.dark .bg-gray-50 { background: #0f2942; }
+.dark .bg-gray-100 { background: #0a1628; }
+.dark .bg-white { background: #0f2942; }
+.dark .border-gray-200 { border-color: #1a3a5c; }
+.dark .hover\:bg-gray-50:hover { background: #1a3a5c; }
+.dark input, .dark select, .dark textarea { background: #0f2942; border-color: #1a3a5c; color: #e2e8f0; }
+#sidebar { width: 240px; flex-shrink: 0; }
+#main-content { flex: 1; min-width: 0; }
+#map-container { height: calc(100vh - 57px); }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; width: 100%; border: none; cursor: pointer; background: transparent; font-size: 14px; font-weight: 500; transition: all .15s; text-align: left; color: #64748b; }
+.nav-item:hover { background: #f8fafc; color: #0f172a; }
+.dark .nav-item:hover { background: #1a3a5c; color: #e2e8f0; }
+.nav-item.active { background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+.dark .nav-item.active { background: #1e3a5c; color: #60a5fa; }
+.page { display: none; }
+.page.active { display: block; }
+#page-map.active { display: flex; flex-direction: column; }
+.line-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: white; border-radius: 12px; margin-bottom: 8px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s; }
+.line-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.dark .line-card { background: #0f2942; }
+.chip { padding: 7px 16px; border-radius: 999px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; background: white; color: #64748b; box-shadow: 0 2px 8px rgba(0,0,0,.12); transition: .15s; flex-shrink: 0; }
+.chip.active { background: #1d4ed8; color: white; }
+.ticket-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 3px 16px rgba(0,0,0,.08); margin-bottom: 16px; }
+.dark .ticket-card { background: #0f2942; }
+.ticket-hd { background: linear-gradient(135deg, #1d4ed8, #1e40af); padding: 16px 18px; color: white; }
+.ticket-bd { padding: 18px; }
+.dashes { height: 0; border-top: 2px dashed #e2e8f0; margin: 0 -18px; position: relative; }
+.dark .dashes { border-color: #1a3a5c; }
+.dashes::before, .dashes::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; top: -9px; }
+.dashes::before { left: -9px; background: #f1f5f9; }
+.dashes::after { right: -9px; background: #f1f5f9; }
+.dark .dashes::before, .dark .dashes::after { background: #0a1628; }
+.hist-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f8fafc; border-radius: 10px; margin-bottom: 7px; }
+.dark .hist-item { background: #0f2942; }
+@keyframes pdot { 0%,100%{opacity:1} 50%{opacity:.3} }
+.pulse { animation: pdot 2s infinite; }
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #0f172a; color: white; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 500; z-index: 9999; transition: transform .28s; white-space: nowrap; pointer-events: none; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.ok { background: #059669; }
+#toast.err { background: #dc2626; }
+.mo { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px; }
+.mo.open { display: flex; }
+</style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] min-h-screen overflow-hidden" onload="initDash()">
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ── SIDEBAR ── -->
+  <aside id="sidebar" class="glass dark:bg-[#0a1628] border-r border-gray-200 dark:border-[#1a3a5c] h-screen flex flex-col fixed left-0 top-0 z-40 transition-transform duration-300 -translate-x-full lg:translate-x-0">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-200 dark:border-[#1a3a5c] flex-shrink-0">
+      <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+      </div>
+      <span class="font-bold text-lg text-gray-800 dark:text-white">BUS</span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-3 overflow-y-auto space-y-1">
+      <button class="nav-item active" id="ni-home" onclick="switchTab('home')">
+        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        Accueil
+      </button>
+      <button class="nav-item" id="ni-map" onclick="switchTab('map')">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Carte
+      </button>
+      <button class="nav-item" id="ni-tickets" onclick="switchTab('tickets')" style="position:relative">
+        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2z"/></svg>
+        Mes Tickets
+        <span id="tktBadge" class="ml-auto hidden min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1"></span>
+      </button>
+      <button class="nav-item" id="ni-profil" onclick="switchTab('profil')">
+        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        Profil
+      </button>
+      <div class="h-px bg-gray-200 dark:bg-[#1a3a5c] my-2"></div>
+      <button class="nav-item" onclick="window.location.href='search.html'">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Rechercher un bus
+      </button>
+      <button class="nav-item" onclick="openReport()">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        Signaler
+      </button>
+    </nav>
+
+    <!-- User footer -->
+    <div class="flex items-center gap-3 px-4 py-3 border-t border-gray-200 dark:border-[#1a3a5c] flex-shrink-0">
+      <img id="sbAva" src="" class="w-9 h-9 rounded-full object-cover bg-gray-200 cursor-pointer flex-shrink-0" onclick="switchTab('profil')">
+      <div class="flex-1 min-w-0">
+        <div id="sbName" class="text-sm font-semibold text-gray-800 dark:text-white truncate">Chargement…</div>
+        <button onclick="doLogout()" class="text-xs text-red-500 hover:text-red-700 font-medium">Déconnexion</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar overlay mobile -->
+  <div id="sbOvr" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" onclick="closeSb()"></div>
+
+  <!-- ── MAIN ── -->
+  <div id="main-content" class="lg:ml-[240px] flex flex-col h-screen overflow-hidden">
+    <!-- Mobile top bar -->
+    <header class="lg:hidden glass dark:bg-[#0a1628] border-b border-gray-200 dark:border-[#1a3a5c] px-4 py-3 flex items-center gap-3 flex-shrink-0 z-20">
+      <button onclick="openSb()" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1a3a5c] flex items-center justify-center">
+        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <span class="font-bold text-gray-800 dark:text-white flex-1">BUS</span>
+      <button onclick="toggleDark()" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1a3a5c] flex items-center justify-center">
+        <svg class="w-5 h-5 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+      </button>
+      <img id="mhdrAva" src="" class="w-8 h-8 rounded-full object-cover bg-gray-200 cursor-pointer" onclick="switchTab('profil')">
+    </header>
+
+    <!-- Desktop top bar (dark toggle) -->
+    <div class="hidden lg:flex justify-end px-6 py-2 glass dark:bg-[#0a1628] border-b border-gray-200 dark:border-[#1a3a5c] flex-shrink-0">
+      <button onclick="toggleDark()" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-[#1a3a5c] flex items-center justify-center">
+        <svg class="w-5 h-5 text-gray-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+      </button>
+    </div>
+
+    <!-- Pages container -->
+    <div class="flex-1 relative overflow-hidden">
+
+      <!-- ╔ PAGE ACCUEIL ╗ -->
+      <div id="page-home" class="page active absolute inset-0 overflow-y-auto bg-gray-100 dark:bg-[#0a1628]">
+        <!-- Welcome header -->
+        <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-6 relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+          <div class="relative z-10">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-blue-100 text-sm font-medium">Bonjour,</p>
+                <h1 id="whName" class="text-white text-2xl font-bold mt-0.5">Étudiant</h1>
+                <p id="whDate" class="text-blue-200 text-xs mt-1"></p>
+              </div>
+              <img id="whAva" src="" class="w-12 h-12 rounded-full border-2 border-white/30 object-cover bg-white/20 cursor-pointer" onclick="switchTab('profil')">
+            </div>
+            <div class="grid grid-cols-3 gap-3 mt-5">
+              <div class="bg-white/10 rounded-xl p-3 text-center">
+                <div id="stActive" class="text-white text-xl font-bold">0</div>
+                <div class="text-blue-200 text-[10px] uppercase tracking-wider mt-0.5">Bus actifs</div>
+              </div>
+              <div class="bg-white/10 rounded-xl p-3 text-center">
+                <div id="stTickets" class="text-white text-xl font-bold">0</div>
+                <div class="text-blue-200 text-[10px] uppercase tracking-wider mt-0.5">Mes tickets</div>
+              </div>
+              <div class="bg-white/10 rounded-xl p-3 text-center">
+                <div id="stLines" class="text-white text-xl font-bold">0</div>
+                <div class="text-blue-200 text-[10px] uppercase tracking-wider mt-0.5">Lignes</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-4 py-5 space-y-5 max-w-2xl mx-auto">
+          <!-- Ticket actif -->
+          <div id="atSec" class="hidden">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold text-gray-800 dark:text-white">Ticket actif</h2>
+              <button onclick="switchTab('tickets')" class="text-sm text-blue-600 font-semibold">Voir tout →</button>
+            </div>
+            <div id="atCard"></div>
+          </div>
+
+          <!-- Lignes -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-bold text-gray-800 dark:text-white">Lignes disponibles</h2>
+              <span id="activeBadge" class="text-xs font-semibold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full"></span>
+            </div>
+            <div id="lignesList"><div class="flex justify-center py-8"><div class="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div></div>
+          </div>
+
+          <!-- Capteur temps réel -->
+          <div id="sensorSec" class="hidden">
+            <h2 class="font-bold text-gray-800 dark:text-white mb-3">Capteur temps réel</h2>
+            <div class="bg-[#0f172a] rounded-xl p-4 text-white">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-2 h-2 rounded-full bg-green-400 pulse"></div>
+                <span class="text-xs text-gray-400 font-medium tracking-wider uppercase">En direct</span>
+                <span id="sLine" class="text-xs font-bold ml-auto text-gray-300"></span>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div><div id="sSpd" class="text-xl font-bold">--</div><div class="text-[10px] text-gray-500 uppercase tracking-wide mt-0.5">Vitesse</div></div>
+                <div><div id="sSts" class="text-xl font-bold">--</div><div class="text-[10px] text-gray-500 uppercase tracking-wide mt-0.5">Places lib.</div></div>
+                <div><div id="sEtat" class="text-base font-bold mt-1">--</div><div class="text-[10px] text-gray-500 uppercase tracking-wide mt-0.5">Statut</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔ PAGE CARTE ╗ -->
+      <div id="page-map" class="page absolute inset-0 overflow-hidden">
+        <div id="map" style="position:absolute;inset:0;"></div>
+        <div id="mapchips" style="position:absolute;bottom:12px;left:0;right:0;z-index:10;display:flex;gap:8px;overflow-x:auto;padding:0 12px;scrollbar-width:none;"></div>
+      </div>
+
+      <!-- ╔ PAGE TICKETS ╗ -->
+      <div id="page-tickets" class="page absolute inset-0 overflow-y-auto bg-gray-100 dark:bg-[#0a1628]">
+        <div class="px-4 py-5 max-w-2xl mx-auto">
+          <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-5">Mes Tickets</h2>
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-3">Actifs</h3>
+          <div id="tkList"><div class="flex justify-center py-8"><div class="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div></div></div>
+          <h3 class="font-semibold text-gray-700 dark:text-gray-300 mb-3 mt-6">Historique</h3>
+          <div id="hstList"></div>
+        </div>
+      </div>
+
+      <!-- ╔ PAGE PROFIL ╗ -->
+      <div id="page-profil" class="page absolute inset-0 overflow-y-auto bg-gray-100 dark:bg-[#0a1628]">
+        <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-8 flex flex-col items-center">
+          <div class="relative mb-3">
+            <img id="profAva" src="" class="w-20 h-20 rounded-full border-3 border-white/40 object-cover bg-white/20">
+            <button onclick="document.getElementById('fphoto').click()" class="absolute bottom-0 right-0 w-7 h-7 bg-white border-2 border-blue-600 rounded-full flex items-center justify-center cursor-pointer">
+              <svg class="w-3 h-3 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+            <input type="file" id="fphoto" accept="image/*" class="hidden" onchange="uploadPhoto(event)">
+          </div>
+          <h2 id="profName" class="text-xl font-bold text-white"></h2>
+          <p id="profEmail" class="text-blue-200 text-sm mt-0.5"></p>
+          <span id="profCode" class="bg-white/15 text-white text-xs px-3 py-1 rounded-full mt-2"></span>
+        </div>
+        <div class="px-4 py-5 space-y-4 max-w-lg mx-auto">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="glass dark:bg-[#0f2942] rounded-xl p-4 flex items-center gap-3">
+              <div class="w-9 h-9 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v4c1.1 0 2 .9 2 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2z"/></svg>
+              </div>
+              <div><div id="statTot" class="text-xl font-bold text-gray-800 dark:text-white">0</div><div class="text-xs text-gray-500">Total</div></div>
+            </div>
+            <div class="glass dark:bg-[#0f2942] rounded-xl p-4 flex items-center gap-3">
+              <div class="w-9 h-9 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              </div>
+              <div><div id="statAct" class="text-xl font-bold text-gray-800 dark:text-white">0</div><div class="text-xs text-gray-500">Actifs</div></div>
+            </div>
+          </div>
+
+          <div class="glass dark:bg-[#0f2942] rounded-xl p-5">
+            <h3 class="font-bold text-gray-800 dark:text-white mb-4">Mes informations</h3>
+            <div class="space-y-3">
+              <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Prénom</label><input id="ePrenom" type="text" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm outline-none focus:border-blue-500"></div>
+              <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Nom</label><input id="eNom" type="text" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm outline-none focus:border-blue-500"></div>
+              <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Téléphone</label><input id="eTel" type="tel" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm outline-none focus:border-blue-500"></div>
+              <button onclick="saveProfile()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 text-sm mt-1">Enregistrer</button>
+            </div>
+          </div>
+
+          <div class="glass dark:bg-[#0f2942] rounded-xl p-5">
+            <h3 class="font-bold text-gray-800 dark:text-white mb-4">Changer le mot de passe</h3>
+            <div class="space-y-3">
+              <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Mot de passe actuel</label><input id="pwdOld" type="password" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm outline-none focus:border-blue-500"></div>
+              <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Nouveau mot de passe</label><input id="pwdNew" type="password" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm outline-none focus:border-blue-500"></div>
+              <button onclick="changePwd()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 text-sm">Modifier</button>
+            </div>
+          </div>
+
+          <button onclick="doLogout()" class="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-semibold hover:bg-red-100 text-sm flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+            Déconnexion
+          </button>
+        </div>
+      </div>
+
+    </div><!-- pages container -->
+  </div><!-- main -->
+</div><!-- flex layout -->
+
+<!-- ── Report Modal ── -->
+<div id="modReport" class="mo">
+  <div class="glass dark:bg-[#0f2942] rounded-2xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-lg font-bold text-gray-800 dark:text-white">Signaler un problème</h3>
+      <button onclick="closeReport()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    </div>
+    <div class="space-y-4">
+      <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Type</label>
+        <select id="rType" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm">
+          <option value="proprete">Propreté</option><option value="retard">Retard</option><option value="securite">Sécurité</option><option value="comportement">Comportement</option><option value="autre">Autre</option>
+        </select>
+      </div>
+      <div><label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Description</label>
+        <textarea id="rDesc" class="w-full px-3 py-2.5 bg-gray-50 dark:bg-[#0f2942] border border-gray-200 dark:border-[#1a3a5c] rounded-lg text-sm resize-none" rows="4" placeholder="Décrivez le problème…"></textarea>
+      </div>
+      <button onclick="submitReport()" class="w-full py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 text-sm">Envoyer</button>
+      <button onclick="closeReport()" class="w-full py-3 bg-gray-100 dark:bg-[#1a3a5c] text-gray-700 dark:text-gray-200 rounded-xl font-semibold text-sm">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Modal ── -->
+<div id="modCf" class="mo">
+  <div class="glass dark:bg-[#0f2942] rounded-2xl w-full max-w-sm p-6">
+    <h3 id="cfTitle" class="text-base font-bold text-gray-800 dark:text-white mb-2"></h3>
+    <p id="cfText" class="text-sm text-gray-500 dark:text-gray-400 mb-5"></p>
+    <div class="space-y-3">
+      <button id="cfOk" class="w-full py-3 bg-red-500 text-white rounded-xl font-semibold text-sm">Confirmer</button>
+      <button onclick="closeCf()" class="w-full py-3 bg-gray-100 dark:bg-[#1a3a5c] text-gray-700 dark:text-gray-200 rounded-xl font-semibold text-sm">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API  = '../../backend/api.php';
+const EAPI = '../../backend/etudiant_api.php';
+const BLANK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
+
+(function(){const u=JSON.parse(localStorage.getItem('user')||'null');if(!u||u.role!=='etudiant')window.location.replace('../../index.html');})();
+const ME = JSON.parse(localStorage.getItem('user'));
+
+let buses=[], arrets=[], myRes=[], hist=[];
+let map, busMarkerMap={}, routeLayers=[], ligneFilter=null;
+let timerIds={};
+
+// ── Sidebar ──
+function openSb(){document.getElementById('sidebar').classList.remove('-translate-x-full');document.getElementById('sbOvr').classList.remove('hidden');}
+function closeSb(){document.getElementById('sidebar').classList.add('-translate-x-full');document.getElementById('sbOvr').classList.add('hidden');}
+
+// ── Dark mode ──
+function toggleDark(){const d=document.documentElement.classList.toggle('dark');localStorage.setItem('dark',d);}
+function initDarkMode(){if(localStorage.getItem('dark')==='true')document.documentElement.classList.add('dark');}
+
+// ── Tabs ──
+const TABS=['home','map','tickets','profil'];
+function switchTab(t){
+  TABS.forEach(x=>{
+    document.getElementById('page-'+x).classList.toggle('active',x===t);
+    const b=document.getElementById('ni-'+x);if(b)b.classList.toggle('active',x===t);
+  });
+  closeSb();
+  if(t==='map'){ensureMap();setTimeout(()=>map&&map.resize(),80);}
+  if(t==='tickets'){renderTickets();loadHist();}
+  if(t==='profil'){renderProfile();}
+}
+
+// ── Toast ──
+let _tt;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='show'+(type==='ok'?' ok':type==='err'?' err':'');
+  clearTimeout(_tt);_tt=setTimeout(()=>el.className='',3200);
+}
+
+// ── Confirm ──
+let _cfCb=null;
+function confirm2(title,text,cb){
+  document.getElementById('cfTitle').textContent=title;
+  document.getElementById('cfText').textContent=text;
+  _cfCb=cb;document.getElementById('modCf').classList.add('open');
+}
+function closeCf(){document.getElementById('modCf').classList.remove('open');_cfCb=null;}
+document.getElementById('cfOk').onclick=function(){const cb=_cfCb;closeCf();if(typeof cb==='function')cb();};
+
+// ── Report ──
+function openReport(){document.getElementById('modReport').classList.add('open');}
+function closeReport(){document.getElementById('modReport').classList.remove('open');document.getElementById('rDesc').value='';}
+async function submitReport(){
+  const type=document.getElementById('rType').value;
+  const desc=document.getElementById('rDesc').value.trim();
+  if(!desc)return toast('Décrivez le problème','err');
+  try{
+    const r=await fetch(API+'?action=report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:ME.id,type,description:desc})});
+    const d=await r.json();
+    if(d.success){toast(d.message,'ok');closeReport();}else toast(d.message||'Erreur','err');
+  }catch{toast('Erreur de connexion','err');}
+}
+
+// ── Countdown ──
+function remMs(ds,ts){if(!ds||!ts)return-1;return new Date(ds+'T'+ts).getTime()+30*60*1000-Date.now();}
+function fmtCd(ms){
+  if(ms<=0)return{t:'Expiré',cls:'bg-red-100 text-red-700'};
+  const s=Math.floor(ms/1000),m=Math.floor(s/60),sc=s%60;
+  const t=m+':'+(sc<10?'0':'')+sc;
+  return m>=15?{t,cls:'bg-green-100 text-green-700'}:m>=5?{t,cls:'bg-yellow-100 text-yellow-700'}:{t,cls:'bg-red-100 text-red-700'};
+}
+
+// ── Data loading ──
+// Premier chargement complet : routes + positions
+async function loadAll(){
+  try{
+    const [bd,ad]=await Promise.all([
+      fetch(API+'?action=buses').then(r=>r.json()),
+      fetch(API+'?action=arrets').then(r=>r.json())
+    ]);
+    buses=Array.isArray(bd)?bd:[];
+    arrets=Array.isArray(ad)?ad:[];
+    renderHome();
+    updateMap();
+  }catch(e){console.error('loadAll',e);}
+}
+
+// Rafraîchissement léger toutes les 5s : positions uniquement, marqueurs déplacés en douceur
+async function refreshPositions(){
+  try{
+    const bd=await fetch(API+'?action=buses').then(r=>r.json());
+    if(!Array.isArray(bd))return;
+    buses=bd;
+    renderHome();          // stats + widget capteur
+    liveUpdateMarkers();   // déplace les marqueurs existants sans tout recréer
+  }catch(e){}
+}
+
+// Met à jour les marqueurs en place (pas de recréation)
+function liveUpdateMarkers(){
+  if(!map||!map.isStyleLoaded())return;
+  const filtered=ligneFilter?buses.filter(b=>b.id==ligneFilter):buses;
+  filtered.forEach(b=>{
+    const lat=parseFloat(b.latitude),lng=parseFloat(b.longitude);
+    if(isNaN(lat)||isNaN(lng)||(lat===0&&lng===0))return;
+    const res=myRes.some(r=>r.ligne_id==b.id),on=!!parseInt(b.en_service);
+    const col=res?'#f59e0b':on?(b.couleur||'#1d4ed8'):'#9ca3af';
+    const popup=`<strong style="color:${col}">Ligne ${esc(b.numero||'')}</strong><br>`+
+      `${esc(b.trajet_depart||'')} → ${esc(b.trajet_arrivee||'')}<br>`+
+      `Places: ${b.places_libres??'--'}/${b.places_totales??'--'}<br>`+
+      `Vitesse: ${b.vitesse??'--'} km/h<br>`+
+      `<span style="color:${on?'#10b981':'#9ca3af'}">${on?'En service':'Arrêté'}</span>`;
+    if(busMarkerMap[b.id]){
+      // Marqueur existant : juste déplacer + mettre à jour popup
+      busMarkerMap[b.id].setLngLat([lng,lat]);
+      busMarkerMap[b.id].setPopup(new mapboxgl.Popup({offset:20}).setHTML(popup));
+    } else {
+      // Nouveau marqueur
+      const sz=res?38:30;
+      const el=document.createElement('div');
+      el.style.cssText=`width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;color:#fff;font-size:${res?11:9}px;font-weight:700;`;
+      el.textContent=b.numero||'?';
+      busMarkerMap[b.id]=new mapboxgl.Marker({element:el})
+        .setLngLat([lng,lat])
+        .setPopup(new mapboxgl.Popup({offset:20}).setHTML(popup))
+        .addTo(map);
+    }
+  });
+}
+
+async function loadRes(){
+  try{
+    const r=await fetch(EAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'my_reservations',user_id:ME.id})});
+    const d=await r.json();myRes=Array.isArray(d)?d:[];
+  }catch{myRes=[];}
+  const b=document.getElementById('tktBadge');
+  if(myRes.length){b.textContent=myRes.length;b.classList.remove('hidden');b.classList.add('flex');}
+  else{b.classList.add('hidden');b.classList.remove('flex');}
+  renderHome();renderTickets();
+}
+
+async function loadHist(){
+  try{
+    const r=await fetch(EAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reservation_history',user_id:ME.id})});
+    const d=await r.json();hist=Array.isArray(d)?d:[];
+  }catch{hist=[];}
+  renderHist();
+}
+
+// ── Render Home ──
+function renderHome(){
+  document.getElementById('stActive').textContent=buses.filter(b=>parseInt(b.en_service)).length;
+  document.getElementById('stTickets').textContent=myRes.length;
+  document.getElementById('stLines').textContent=buses.length;
+
+  const sec=document.getElementById('atSec');
+  if(myRes.length){
+    const r=myRes[0];const cd=fmtCd(remMs(r.date_reservation,r.heure_reservation));
+    sec.classList.remove('hidden');
+    document.getElementById('atCard').innerHTML=`
+      <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl p-4 text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div class="relative z-10">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="text-blue-200 text-xs font-semibold tracking-wider">LIGNE ${esc(r.numero)}</div>
+              <div class="text-white text-base font-bold mt-1">${esc(r.trajet_depart||'')} → ${esc(r.trajet_arrivee||'')}</div>
+              ${r.arret_descente?`<div class="text-blue-200 text-xs mt-1.5">Descente: <strong>${esc(r.arret_descente)}</strong></div>`:''}
+            </div>
+            <span id="htmr-${r.id}" class="text-xs font-bold px-2.5 py-1 rounded-full bg-white/15 text-white">⏱ ${cd.t}</span>
+          </div>
+          <button onclick="switchTab('tickets')" class="mt-3 w-full py-2 bg-white/15 border border-white/25 text-white text-sm font-semibold rounded-lg">Voir le ticket →</button>
+        </div>
+      </div>`;
+    clearInterval(timerIds['h'+r.id]);
+    timerIds['h'+r.id]=setInterval(()=>{
+      const el=document.getElementById('htmr-'+r.id);
+      if(!el){clearInterval(timerIds['h'+r.id]);return;}
+      el.textContent='⏱ '+fmtCd(remMs(r.date_reservation,r.heure_reservation)).t;
+    },1000);
+  }else sec.classList.add('hidden');
+
+  const actN=buses.filter(b=>parseInt(b.en_service)).length;
+  document.getElementById('activeBadge').textContent=actN+' en service';
+  if(!buses.length){document.getElementById('lignesList').innerHTML='<p class="text-center text-gray-500 py-8">Aucune ligne</p>';return;}
+  document.getElementById('lignesList').innerHTML=buses.map(b=>{
+    const on=!!parseInt(b.en_service), hasBus=!!b.has_bus, col=b.couleur||'#1d4ed8';
+    const dotCol = on ? 'bg-green-500' : hasBus ? 'bg-amber-400' : 'bg-gray-300';
+    const statusTxt = on ? 'En service' : hasBus ? 'Pas encore démarré' : 'Aucun bus';
+    const places = hasBus
+      ? `${b.places_libres??'--'}/${b.places_totales??'--'} places`
+      : 'Non disponible';
+    return `<div class="line-card" onclick="location.href='bus.html?id=${b.id}'">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs text-white flex-shrink-0" style="background:${col}">${esc(b.numero||'?')}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold text-gray-800 dark:text-white truncate">${esc(b.trajet_depart||'')} → ${esc(b.trajet_arrivee||'')}</div>
+        <div class="text-xs text-gray-500 mt-0.5">${places}</div>
+      </div>
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <div class="w-2 h-2 rounded-full ${dotCol}"></div>
+        <span class="text-xs text-gray-500">${statusTxt}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const alive=buses.find(b=>parseInt(b.en_service)&&b.vitesse);
+  if(alive){
+    document.getElementById('sensorSec').classList.remove('hidden');
+    document.getElementById('sLine').textContent='Ligne '+esc(alive.numero||'');
+    document.getElementById('sSpd').textContent=(alive.vitesse||0)+' km/h';
+    document.getElementById('sSts').textContent=(alive.places_libres??'--')+'/'+(alive.places_totales??'--');
+    document.getElementById('sEtat').textContent=parseInt(alive.en_service)?'En service':'Arrêté';
+  }else document.getElementById('sensorSec').classList.add('hidden');
+}
+
+// ── Render Tickets ──
+function renderTickets(){
+  const el=document.getElementById('tkList');
+  if(!myRes.length){
+    el.innerHTML=`<div class="text-center py-10">
+      <div class="text-4xl mb-3">🎫</div>
+      <p class="font-semibold text-gray-700 dark:text-gray-300">Aucun ticket actif</p>
+      <p class="text-sm text-gray-500 mt-1">Réservez un bus pour voir vos tickets</p>
+      <button onclick="location.href='search.html'" class="mt-4 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">Réserver maintenant</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML=myRes.map(r=>{
+    const cd=fmtCd(remMs(r.date_reservation,r.heure_reservation));
+    const code='BUS-'+String(r.id).padStart(6,'0');
+    return `<div class="ticket-card">
+      <div class="ticket-hd">
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-blue-200 text-xs font-semibold tracking-wider">LIGNE ${esc(r.numero)}</div>
+            <div class="text-white text-base font-bold mt-1">${esc(r.trajet_depart||'')} → ${esc(r.trajet_arrivee||'')}</div>
+          </div>
+          <span id="ttmr-${r.id}" class="text-xs font-bold px-2.5 py-1 rounded-full ${cd.cls}">⏱ ${cd.t}</span>
+        </div>
+      </div>
+      <div class="dashes"></div>
+      <div class="ticket-bd text-center">
+        <div id="qrc-${r.id}" class="flex justify-center my-2"></div>
+        <div class="mt-1 text-xs text-orange-500 font-medium">⏱ Valide aujourd'hui jusqu'à 23:59</div>
+        <div class="mt-2">
+          <div class="text-xs text-gray-500 font-semibold tracking-wider">N° TICKET</div>
+          <div class="text-sm font-bold font-mono tracking-widest text-gray-800 dark:text-white">${code}</div>
+        </div>
+        <div class="mt-4 flex justify-between text-left gap-3">
+          <div><div class="text-xs text-gray-500 font-semibold">DESCENTE</div><div class="text-sm font-semibold text-gray-800 dark:text-white">${esc(r.arret_descente||'N/A')}</div></div>
+          <div><div class="text-xs text-gray-500 font-semibold">HEURE</div><div class="text-sm font-semibold text-gray-800 dark:text-white">${r.heure_reservation?(r.heure_reservation+'').slice(0,5):'--'}</div></div>
+          <div><div class="text-xs text-gray-500 font-semibold">DATE</div><div class="text-sm font-semibold text-gray-800 dark:text-white">${r.date_reservation||'--'}</div></div>
+        </div>
+        <button onclick="cancelRes(${r.id})" class="mt-4 w-full py-2.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-semibold text-sm hover:bg-red-100">Annuler la réservation</button>
+      </div>
+    </div>`;
+  }).join('');
+  myRes.forEach(r=>{
+    const container=document.getElementById('qrc-'+r.id);
+    if(container){
+      // QR contient l'URL de vérification — scannable avec n'importe quelle caméra
+      const base=window.location.origin+window.location.pathname.replace('/etudiant/dashboard.html','');
+      const qrUrl=base+'/verify.html?r='+r.id;
+      const img=document.createElement('img');
+      img.src='https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(qrUrl)+'&color=0f172a&bgcolor=ffffff&margin=1';
+      img.alt='QR code';
+      img.style.cssText='width:160px;height:160px;border-radius:8px;display:block;';
+      img.onerror=()=>{
+        // Fallback texte si pas de connexion
+        container.innerHTML='<div style="width:160px;height:160px;border:2px dashed #cbd5e1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#94a3b8;text-align:center;padding:8px;">QR indisponible<br>hors connexion</div>';
+      };
+      container.appendChild(img);
+    }
+    clearInterval(timerIds['t'+r.id]);
+    timerIds['t'+r.id]=setInterval(()=>{
+      const el=document.getElementById('ttmr-'+r.id);
+      if(!el){clearInterval(timerIds['t'+r.id]);return;}
+      const cd2=fmtCd(remMs(r.date_reservation,r.heure_reservation));
+      el.textContent='⏱ '+cd2.t;el.className='text-xs font-bold px-2.5 py-1 rounded-full '+cd2.cls;
+    },1000);
+  });
+}
+
+function renderHist(){
+  const el=document.getElementById('hstList');
+  if(!hist.length){el.innerHTML='<p class="text-center text-gray-500 text-sm py-4">Aucun historique</p>';return;}
+  const sc={active:{bg:'bg-green-100 text-green-700',l:'Actif'},utilisee:{bg:'bg-blue-100 text-blue-700',l:'Utilisé'},annulee:{bg:'bg-red-100 text-red-700',l:'Annulé'},expiree:{bg:'bg-yellow-100 text-yellow-700',l:'Expiré'}};
+  el.innerHTML=hist.map(r=>{
+    const s=sc[r.statut]||{bg:'bg-gray-100 text-gray-600',l:r.statut};
+    return `<div class="hist-item">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs text-white flex-shrink-0" style="background:${r.couleur||'#1d4ed8'}">${esc(r.numero||'?')}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold text-gray-800 dark:text-white truncate">${esc(r.trajet_depart||'')} → ${esc(r.trajet_arrivee||'')}</div>
+        <div class="text-xs text-gray-500 mt-0.5">${r.date_reservation||''} · ${r.heure_reservation?(r.heure_reservation+'').slice(0,5):''}</div>
+      </div>
+      <span class="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${s.bg}">${s.l}</span>
+    </div>`;
+  }).join('');
+}
+
+async function cancelRes(id){
+  confirm2('Annuler la réservation','Voulez-vous vraiment annuler ce ticket ?',async()=>{
+    try{
+      const r=await fetch(API+'?action=cancel_reservation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reservation_id:id,user_id:ME.id})});
+      const d=await r.json();
+      if(d.success){toast(d.message,'ok');await loadRes();loadAll();}else toast(d.message||'Erreur','err');
+    }catch{toast('Erreur de connexion','err');}
+  });
+}
+
+// ── Map ──
+let mapReady=false,userLng=3.0588,userLat=36.7538;
+if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>{userLat=p.coords.latitude;userLng=p.coords.longitude;if(map)map.setCenter([userLng,userLat]);},{},{timeout:6000,maximumAge:300000});
+
+function ensureMap(){
+  if(mapReady)return;mapReady=true;
+  map=new mapboxgl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[userLng,userLat],zoom:12});
+  map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
+  map.on('load',()=>updateMap());
+}
+
+function updateMap(){
+  if(!map)return;
+  if(!map.isStyleLoaded()){map.once('load',updateMap);return;}
+  clearMap();drawRoutes();drawBuses();buildChips();
+}
+
+function clearMap(){
+  Object.values(busMarkerMap).forEach(m=>m.remove());busMarkerMap={};
+  routeLayers.forEach(l=>{if(map.getLayer(l.id))map.removeLayer(l.id);});
+  const done=new Set();
+  routeLayers.forEach(l=>{if(!done.has(l.src)&&map.getSource(l.src)){map.removeSource(l.src);done.add(l.src);}});
+  routeLayers=[];
+}
+
+function drawRoutes(){
+  const filtered=ligneFilter?buses.filter(b=>b.id==ligneFilter):buses;
+  const bounds=new mapboxgl.LngLatBounds();let any=false;
+  filtered.forEach(b=>{
+    const stops=arrets.filter(a=>a.ligne_id==b.id&&a.latitude&&a.longitude).sort((x,y)=>x.ordre-y.ordre).map(a=>[parseFloat(a.longitude),parseFloat(a.latitude)]);
+    if(stops.length<2)return;
+    stops.forEach(c=>{bounds.extend(c);any=true;});
+    const src='r-'+b.id,lid='rl-'+b.id;
+    map.addSource(src,{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:stops}}});
+    map.addLayer({id:lid,type:'line',source:src,paint:{'line-color':b.couleur||'#1d4ed8','line-width':4,'line-opacity':.8}});
+    routeLayers.push({id:lid,src});
+    arrets.filter(a=>a.ligne_id==b.id&&a.latitude&&a.longitude).forEach(a=>{
+      const el=document.createElement('div');
+      el.style.cssText='width:9px;height:9px;border-radius:50%;background:'+(b.couleur||'#1d4ed8')+';border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);';
+      new mapboxgl.Marker({element:el}).setLngLat([parseFloat(a.longitude),parseFloat(a.latitude)]).setPopup(new mapboxgl.Popup({offset:12}).setHTML('<strong>'+esc(a.nom||'')+'</strong>')).addTo(map);
+    });
+  });
+  if(any&&!bounds.isEmpty())map.fitBounds(bounds,{padding:60,maxZoom:15,duration:500});
+}
+
+function drawBuses(){
+  liveUpdateMarkers();
+}
+
+function buildChips(){
+  const el=document.getElementById('mapchips');
+  const all=`<button class="chip${ligneFilter===null?' active':''}" onclick="filterMap(null)">Toutes</button>`;
+  const chips=buses.map(b=>{
+    const on=ligneFilter==b.id,col=b.couleur||'#1d4ed8';
+    return `<button class="chip${on?' active':''}" onclick="filterMap(${b.id})" style="${on?'background:'+col+';':''}">${esc(b.numero||'?')}</button>`;
+  }).join('');
+  el.innerHTML=all+chips;
+}
+
+function filterMap(id){ligneFilter=id;updateMap();}
+
+// ── Profile ──
+async function loadProfile(){
+  try{
+    const r=await fetch(EAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'profile',user_id:ME.id})});
+    const p=await r.json();
+    if(p&&p.id){
+      const name=(p.prenom||'')+' '+(p.nom||'');
+      document.getElementById('whName').textContent=p.prenom||ME.prenom||'Étudiant';
+      document.getElementById('sbName').textContent=name.trim()||'Étudiant';
+      document.getElementById('profName').textContent=name.trim();
+      document.getElementById('profEmail').textContent=p.email||'';
+      document.getElementById('profCode').textContent=p.code_etudiant||'';
+      document.getElementById('ePrenom').value=p.prenom||'';
+      document.getElementById('eNom').value=p.nom||'';
+      document.getElementById('eTel').value=p.telephone||'';
+    }
+  }catch(e){console.error('loadProfile',e);}
+}
+
+function renderProfile(){
+  document.getElementById('statTot').textContent=hist.length;
+  document.getElementById('statAct').textContent=myRes.length;
+}
+
+async function loadAvatar(){
+  try{
+    const r=await fetch(EAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'get_photo',user_id:ME.id})});
+    const txt=await r.text();
+    const src=txt&&txt.startsWith('data:')?txt:BLANK;
+    ['sbAva','whAva','profAva','mhdrAva'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=src;});
+  }catch{['sbAva','whAva','profAva','mhdrAva'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=BLANK;});}
+}
+
+async function saveProfile(){
+  const nom=document.getElementById('eNom').value.trim();
+  const prenom=document.getElementById('ePrenom').value.trim();
+  const telephone=document.getElementById('eTel').value.trim();
+  if(!nom||!prenom)return toast('Nom et prénom requis','err');
+  try{
+    const r=await fetch(EAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update_profile',user_id:ME.id,nom,prenom,telephone})});
+    const d=await r.json();
+    if(d.success){
+      toast(d.message,'ok');
+      document.getElementById('profName').textContent=prenom+' '+nom;
+      document.getElementById('whName').textContent=prenom;
+      document.getElementById('sbName').textContent=prenom+' '+nom;
+      const u=JSON.parse(localStorage.getItem('user')||'{}');u.nom=nom;u.prenom=prenom;localStorage.setItem('user',JSON.stringify(u));
+    }else toast(d.message||'Erreur','err');
+  }catch{toast('Erreur de connexion','err');}
+}
+
+async function changePwd(){
+  const cur=document.getElementById('pwdOld').value;
+  const nw=document.getElementById('pwdNew').value;
+  if(!cur||!nw)return toast('Remplissez tous les champs','err');
+  if(nw.length<6)return toast('Minimum 6 caractères','err');
+  try{
+    const r=await fetch(EAPI,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'change_password',user_id:ME.id,current_password:cur,new_password:nw})});
+    const d=await r.json();
+    if(d.success){toast(d.message,'ok');document.getElementById('pwdOld').value='';document.getElementById('pwdNew').value='';}
+    else toast(d.message||'Erreur','err');
+  }catch{toast('Erreur de connexion','err');}
+}
+
+async function uploadPhoto(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const data=e.target.result;
+    try{
+      const r=await fetch(API+'?action=upload_photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:ME.id,photo:data})});
+      const d=await r.json();
+      if(d.success){['sbAva','whAva','profAva','mhdrAva'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=data;});toast('Photo mise à jour','ok');}
+      else toast(d.message||'Erreur','err');
+    }catch{toast('Erreur de connexion','err');}
+  };
+  reader.readAsDataURL(file);
+}
+
+function doLogout(){
+  confirm2('Déconnexion','Voulez-vous vous déconnecter ?', async ()=>{
+    if(ME?.id){
+      try{ await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'expire_reservations',user_id:ME.id})}); }catch(e){}
+    }
+    localStorage.clear();sessionStorage.clear();window.location.replace('../../index.html');
+  });
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function setDate(){
+  document.getElementById('whDate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+function initDash(){
+  initDarkMode();
+  setDate();
+  document.getElementById('whName').textContent=ME.prenom||'Étudiant';
+  document.getElementById('sbName').textContent=((ME.prenom||'')+' '+(ME.nom||'')).trim();
+  ['sbAva','whAva','profAva','mhdrAva'].forEach(id=>{const el=document.getElementById(id);if(el)el.src=BLANK;});
+  Promise.all([loadAll(),loadRes(),loadAvatar(),loadProfile()]);
+  loadHist();
+  // Positions toutes les 5s (sync avec simulation_daemon.php)
+  setInterval(refreshPositions, 5000);
+  // Réservations toutes les 15s
+  setInterval(loadRes, 15000);
+}
+</script>
+</body>
+</html>

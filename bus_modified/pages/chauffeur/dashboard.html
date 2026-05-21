@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chauffeur - BUS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <script>const mapboxgl = maplibregl;</script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        * { font-family: 'Outfit', sans-serif; }
+
+        /* ── Mode clair ── */
+        .glass { background: rgba(255,255,255,0.97); backdrop-filter: blur(20px); }
+
+        /* ── Mode nuit : toutes les surfaces ── */
+        html.dark body          { background: #0a1628 !important; color: #e2e8f0; }
+        html.dark .glass        { background: rgba(10,22,40,0.97) !important; }
+        html.dark nav           { background: rgba(10,22,40,0.97) !important; border-color: #1a3a5c !important; }
+
+        /* Textes */
+        html.dark .text-gray-800, html.dark .text-gray-900 { color: #e2e8f0 !important; }
+        html.dark .text-gray-700 { color: #cbd5e1 !important; }
+        html.dark .text-gray-600 { color: #94a3b8 !important; }
+        html.dark .text-gray-500, html.dark .text-gray-400 { color: #64748b !important; }
+
+        /* Fonds */
+        html.dark .bg-gray-100  { background: #0a1628 !important; }
+        html.dark .bg-gray-50   { background: #0f2942 !important; }
+        html.dark .bg-white     { background: #0f2942 !important; }
+        html.dark .bg-slate-50  { background: #0f2942 !important; }
+        html.dark .bg-slate-800 { background: #0f2942 !important; }
+        html.dark .bg-slate-700 { background: #1a3a5c !important; }
+
+        /* Bordures */
+        html.dark .border-gray-200 { border-color: #1a3a5c !important; }
+        html.dark .border-slate-700 { border-color: #1a3a5c !important; }
+        html.dark .divide-gray-200 > * { border-color: #1a3a5c !important; }
+
+        /* Inputs */
+        html.dark input, html.dark select, html.dark textarea {
+            background: #0f2942 !important;
+            border-color: #1a3a5c !important;
+            color: #e2e8f0 !important;
+        }
+
+        /* Carte modale sélection ligne */
+        html.dark #lineSelectorPanel .glass { background: #0f2942 !important; }
+        html.dark #lineSelectorPanel button { background: #1a3a5c !important; color: #e2e8f0; }
+
+        /* Icône lune/soleil */
+        #darkIcon { transition: transform .3s; }
+        html.dark #darkIcon { transform: rotate(20deg); }
+
+        /* Map */
+        #driverMap { width: 100%; max-width: 100%; min-height: 240px; border-radius: 1rem; aspect-ratio: 16/9; }
+        @media (max-width: 640px) { #driverMap { min-height: 200px; } }
+
+        .eta-badge { background: #3b82f6; color: white; padding: .25rem .75rem; border-radius: 9999px; font-size: .75rem; }
+        .touch-target { min-height: 48px; min-width: 48px; }
+        .large-text   { font-size: 1.125rem; line-height: 1.75rem; }
+        .xl-text      { font-size: 1.25rem;  line-height: 1.75rem; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#0a1628] min-h-screen" onload="initDarkMode()">
+    <nav class="glass fixed top-0 w-full z-50 border-b border-gray-200 dark:border-[#1a3a5c]">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center touch-target">
+                    <svg class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h12v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm3.5-6H6V6h5v5zm2 0V6h5v5h-5zm3.5 6c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                </div>
+                <span class="font-bold text-gray-800 dark:text-white xl-text">BUS</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div onclick="window.location.href='profile.html'" class="flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 px-4 py-2 rounded-lg touch-target">
+                    <img id="userAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" class="w-10 h-10 rounded-full bg-gray-300 dark:bg-slate-600 object-cover">
+                    <span class="text-sm text-gray-600 dark:text-gray-300 large-text" id="userName"></span>
+                </div>
+                <button onclick="toggleDark()" id="darkBtn" class="w-12 h-12 rounded-lg bg-gray-200 dark:bg-[#1a3a5c] flex items-center justify-center hover:bg-gray-300 dark:hover:bg-[#243d5c] touch-target transition-colors" title="Mode nuit">
+                    <svg id="iconMoon" class="w-6 h-6 text-gray-600 dark:hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                    <svg id="iconSun" class="w-6 h-6 text-yellow-400 hidden dark:block" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.22 1.78a1 1 0 011.415 1.415l-.707.707a1 1 0 11-1.414-1.414l.707-.707zM18 9a1 1 0 110 2h-1a1 1 0 110-2h1zM5.636 5.636a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM10 16a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm-6-6a1 1 0 100 2H3a1 1 0 100-2h1zm12.364 4.364a1 1 0 00-1.414 0l-.707.707a1 1 0 001.414 1.414l.707-.707a1 1 0 000-1.414zM10 6a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                </button>
+                <button onclick="logout()" class="text-red-500 hover:text-red-700 large-text px-4 py-2 touch-target">Déconnexion</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sélecteur de ligne (affiché si aucun bus assigné) -->
+    <div id="lineSelectorPanel" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="glass rounded-3xl p-8 w-full max-w-lg">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Choisissez votre ligne</h2>
+            <p class="text-sm text-gray-500 mb-6">Sélectionnez le bus que vous allez conduire aujourd'hui.</p>
+            <div id="availableLinesList" class="space-y-3 max-h-72 overflow-y-auto mb-6">
+                <p class="text-gray-400 text-sm text-center py-4">Chargement...</p>
+            </div>
+            <button onclick="logout()" class="w-full py-3 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-2xl font-semibold">Déconnexion</button>
+        </div>
+    </div>
+
+    <main class="pt-24 px-6 md:px-8 max-w-7xl mx-auto pb-8">
+        <div class="glass rounded-3xl p-6 shadow-lg mb-6">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div class="flex-1">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm uppercase tracking-[0.25em] text-blue-600">Driver Dashboard</p>
+                            <h1 class="mt-2 text-3xl font-bold text-gray-800 dark:text-white" id="busImmat">--</h1>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" id="busMarqueModele">--</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span id="serviceIndicator" class="w-6 h-6 rounded-full bg-red-500"></span>
+                            <span id="serviceStatus" class="text-lg text-red-600 font-bold large-text">- Service arrêté</span>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-blue-600 font-semibold" id="busNumber">Ligne --</p>
+                    <p class="mt-1 text-gray-600 dark:text-gray-400" id="routeName">Chargement de l'itinéraire...</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400" id="busDetails"></p>
+                </div>
+                <div class="flex flex-wrap gap-3 justify-start lg:justify-end">
+                    <button onclick="toggleService()" id="serviceBtn" class="rounded-3xl bg-green-600 px-6 py-3 text-white font-semibold hover:bg-green-700 touch-target">Démarrer le service</button>
+                    <button onclick="openQrScanner()" class="rounded-3xl bg-blue-600 px-6 py-3 text-white font-semibold hover:bg-blue-700 touch-target flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                        Scanner QR
+                    </button>
+                    <button onclick="window.location.href='report.html'" class="rounded-3xl bg-red-600 px-6 py-3 text-white font-semibold hover:bg-red-700 touch-target">Signaler un problème</button>
+                </div>
+            </div>
+        </div>
+        <div class="glass rounded-3xl p-6 shadow-lg">
+                    <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p class="text-sm uppercase tracking-[0.2em] text-blue-600">Current Route</p>
+                            <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">Itinéraire en cours</h2>
+                        </div>
+                        <div class="text-right">
+                            <span class="rounded-3xl bg-slate-100 px-4 py-3 text-slate-700 dark:bg-slate-800 dark:text-slate-200">Places libres : <span id="placesBadge">--</span></span>
+                            <div id="busFullStatus" class="mt-2 text-sm font-semibold text-red-600"></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 rounded-[2rem] overflow-hidden border border-gray-200 dark:border-slate-700" id="mapContainer" style="display: none;">
+                        <div id="driverMap" class="w-full"></div>
+                    </div>
+                </div>
+
+                <!-- ═══ DONNÉES TEMPS RÉEL (mise à jour toutes les 5s) ═══ -->
+        <div class="glass rounded-3xl p-6 shadow-lg mt-6">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <p class="text-sm font-semibold uppercase tracking-[0.2em] text-green-600">Données en temps réel</p>
+                <span id="lastRefresh" class="ml-auto text-xs text-gray-400">--:--:--</span>
+            </div>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-blue-50 dark:bg-blue-900/30 rounded-2xl p-4 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Vitesse</p>
+                    <p id="liveSpeed" class="text-4xl font-bold text-blue-600">--</p>
+                    <p class="text-xs text-gray-400 mt-1">km/h</p>
+                </div>
+                <div class="bg-green-50 dark:bg-green-900/30 rounded-2xl p-4 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Places libres</p>
+                    <p id="livePlaces" class="text-4xl font-bold text-green-600">--</p>
+                    <p id="livePlacesTotal" class="text-xs text-gray-400 mt-1">/ -- totales</p>
+                </div>
+                <div class="bg-orange-50 dark:bg-orange-900/30 rounded-2xl p-4 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Accélération</p>
+                    <p id="liveAccel" class="text-4xl font-bold text-orange-500">--</p>
+                    <p class="text-xs text-gray-400 mt-1">m/s²</p>
+                </div>
+                <div class="bg-purple-50 dark:bg-purple-900/30 rounded-2xl p-4 text-center">
+                    <p class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Température</p>
+                    <p id="liveTemp" class="text-4xl font-bold text-purple-600">--</p>
+                    <p class="text-xs text-gray-400 mt-1">°C</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6 mt-6">
+                    <div class="glass rounded-3xl p-6 shadow-lg">
+                        <p class="text-sm uppercase tracking-[0.2em] text-blue-600">Arrêts suivants</p>
+                        <div id="nextStopsList" class="mt-4 space-y-3">
+                            <p class="text-gray-400 text-sm">Chargement des arrêts...</p>
+                        </div>
+                    </div>
+                    <div class="glass rounded-3xl p-6 shadow-lg">
+                        <p class="text-sm uppercase tracking-[0.2em] text-blue-600">Performance du jour</p>
+                        <div class="mt-4 space-y-3">
+                            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 border border-gray-200 dark:border-slate-700">
+                                <p class="text-sm text-gray-500">Passagers</p>
+                                <p id="todayPassengers" class="text-3xl font-bold text-gray-800 dark:text-white">0</p>
+                            </div>
+                            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 border border-gray-200 dark:border-slate-700">
+                                <p class="text-sm text-gray-500">Kilomètres</p>
+                                <p id="todayKm" class="text-3xl font-bold text-gray-800 dark:text-white">0</p>
+                            </div>
+                            <div class="rounded-2xl bg-slate-50 dark:bg-slate-800 p-4 border border-gray-200 dark:border-slate-700">
+                                <p class="text-sm text-gray-500">Trajets</p>
+                                <p id="todayTrips" class="text-3xl font-bold text-gray-800 dark:text-white">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- currentSpeed gardé pour compatibilité JS -->
+                <span id="currentSpeed" class="hidden"></span>
+            </div>
+
+            <aside class="lg:col-span-4 space-y-6">
+                <div class="glass rounded-3xl p-6 shadow-lg">
+                    <p class="text-sm uppercase tracking-[0.2em] text-blue-600">Contacts d'urgence</p>
+                    <h3 class="mt-3 text-xl font-semibold text-gray-800 dark:text-white">Appels rapides</h3>
+                    <div class="mt-5 space-y-3">
+                        <a href="tel:+213XX000001" class="flex items-center gap-4 w-full py-4 px-5 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-semibold touch-target transition">
+                            <span class="text-2xl">🔧</span>
+                            <div class="text-left">
+                                <div class="font-bold">Dépanneur</div>
+                                <div class="text-xs text-orange-100">+213 XX 000 001</div>
+                            </div>
+                        </a>
+                        <a href="tel:+213XX000002" class="flex items-center gap-4 w-full py-4 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold touch-target transition">
+                            <span class="text-2xl">🏢</span>
+                            <div class="text-left">
+                                <div class="font-bold">Centre de gestion</div>
+                                <div class="text-xs text-blue-200">+213 XX 000 002</div>
+                            </div>
+                        </a>
+                        <a href="tel:1548" class="flex items-center gap-4 w-full py-4 px-5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold touch-target transition">
+                            <span class="text-2xl">🚔</span>
+                            <div class="text-left">
+                                <div class="font-bold">Police / Gendarmerie</div>
+                                <div class="text-xs text-red-200">1548</div>
+                            </div>
+                        </a>
+                        <button onclick="window.location.href='report.html'" class="w-full py-3 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 font-semibold hover:bg-gray-200 dark:hover:bg-slate-600 touch-target transition">
+                            ⚠️ Signaler un incident
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <!-- Modales -->
+    <div id="nextStopModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <div class="glass rounded-2xl p-8 max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Prochain arrêt</h2>
+                <button onclick="closeNextStopModal()" class="text-gray-500 hover:text-gray-700 text-3xl touch-target">&times;</button>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 large-text">Sélectionner le prochain arrêt</label>
+                    <select id="nextStopSelect" class="w-full px-6 py-4 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl large-text touch-target">
+                        <option value="">Chargement...</option>
+                    </select>
+                </div>
+                <button onclick="submitNextStop()" class="w-full py-4 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 text-lg touch-target">Mettre à jour</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="locationPrompt" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+        <!-- identique à l'ancien -->
+    </div>
+
+    <script src="../../assets/js/popup.js"></script>
+    <script>
+        const API_URL = '../../backend/';
+        let driverMap, currentLigneId, currentLineData = null, driverMarker, stopMarkers = [];
+        let routeLayerId = 'driver-route-line';
+        let routeSourceId = 'driver-route-source';
+        let driverLocation = { lat: 36.7538, lng: 3.0588 };
+        let locationWatchId = null;
+        let driverLocationMarker = null;
+        let isInService = localStorage.getItem('inService') === 'true';
+        
+        function checkAuth() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (!user || user.role !== 'chauffeur') {
+                window.location.replace('../../index.html');
+                return null;
+            }
+            return user;
+        }
+        const user = checkAuth();
+        if (!user) throw new Error('not auth');
+        // Empêche le cache navigateur d'afficher la page après déconnexion
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted || (window.performance && window.performance.getEntriesByType('navigation')[0]?.type === 'back_forward')) {
+                checkAuth();
+            }
+        });
+        
+        document.getElementById('userName').textContent = user.prenom + ' ' + user.nom;
+        loadUserAvatar();
+
+        async function loadUserAvatar() {
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get_photo', user_id: user.id, user_role: user.role })
+                });
+                const photo = await res.text();
+                if (photo && photo.startsWith('data:')) {
+                    document.getElementById('userAvatar').src = photo;
+                }
+            } catch (e) { console.error('Erreur chargement avatar', e); }
+        }
+
+        function initDarkMode() {
+            if (localStorage.getItem('dark') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+        }
+        function toggleDark() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('dark', isDark);
+        }
+        initDarkMode();
+
+        function logout() {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '../../index.html';
+        }
+
+        // Fonctions pour les modales (reprises)
+        async function showProfile() {
+            window.location.href = 'profile.html';
+        }
+
+        function loadNotifications() {
+            const container = document.getElementById('notificationsList');
+            container.innerHTML = '<p class="text-gray-400 text-sm">Aucune notification</p>';
+        }
+
+        function callDispatch() {
+            showPopup('Appel au dispatch en cours...', 'success');
+        }
+
+        function sendMessage() {
+            showPopup('Message envoyé au central.', 'success');
+        }
+
+        // Carte
+        function initMap() {
+            driverMap = new mapboxgl.Map({
+                container: 'driverMap',
+                style: 'https://tiles.openfreemap.org/styles/liberty',
+                center: [driverLocation.lng, driverLocation.lat],
+                zoom: 13
+            });
+            driverMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+            const userEl = document.createElement('div');
+            userEl.className = 'user-marker';
+            userEl.style.width = '16px';
+            userEl.style.height = '16px';
+            userEl.style.borderRadius = '50%';
+            userEl.style.background = '#2563eb';
+            userEl.style.border = '2px solid white';
+            userEl.style.boxShadow = '0 0 0 2px rgba(37, 99, 235, 0.15)';
+
+            driverLocationMarker = new mapboxgl.Marker({ element: userEl })
+                .setLngLat([driverLocation.lng, driverLocation.lat])
+                .setPopup(new mapboxgl.Popup({ offset: 25 }).setText('Votre position'))
+                .addTo(driverMap);
+        }
+
+        function promptDriverLocation() {
+            if (!navigator.geolocation) {
+                showPopup('Votre navigateur ne supporte pas la géolocalisation.', 'error');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    driverLocation.lat = position.coords.latitude;
+                    driverLocation.lng = position.coords.longitude;
+                    if (driverMap) {
+                        driverMap.setCenter([driverLocation.lng, driverLocation.lat]);
+                        if (driverLocationMarker) {
+                            driverLocationMarker.setLngLat([driverLocation.lng, driverLocation.lat]);
+                        }
+                    }
+                    showPopup('Localisation activée pour le suivi en temps réel.', 'success');
+                },
+                () => {
+                    showConfirm(
+                        'Autorisez la localisation pour le suivi en temps réel. Voulez-vous réessayer ?',
+                        () => promptDriverLocation()
+                    );
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+
+            if ('watchPosition' in navigator) {
+                if (locationWatchId !== null) {
+                    navigator.geolocation.clearWatch(locationWatchId);
+                }
+                locationWatchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        driverLocation.lat = position.coords.latitude;
+                        driverLocation.lng = position.coords.longitude;
+                        if (driverLocationMarker) {
+                            driverLocationMarker.setLngLat([driverLocation.lng, driverLocation.lat]);
+                        }
+                    },
+                    (error) => {
+                        console.log('Erreur watchPosition chauffeur', error);
+                    },
+                    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+                );
+            }
+        }
+
+        async function loadMyLine() {
+            console.log('loadMyLine called');
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'my_line', user_id: user.id, user_role: user.role })
+                });
+                console.log('API response status:', res.status);
+                const line = await res.json();
+                console.log('API response data:', line);
+                
+                if (line) {
+                    currentLigneId = line.id;
+                    currentLineData = line;
+                    console.log('Line loaded:', currentLigneId, currentLineData);
+                    
+                    // Immatriculation + marque/modèle = identité du chauffeur/bus
+                    document.getElementById('busImmat').textContent    = line.immatriculation || '--';
+                    document.getElementById('busMarqueModele').textContent = [line.marque, line.modele].filter(Boolean).join(' ') || 'Véhicule';
+                    document.getElementById('busNumber').textContent   = `Ligne ${line.numero || '--'}`;
+                    document.getElementById('routeName').textContent   = `${line.nom || ''} · ${line.trajet_depart || ''} → ${line.trajet_arrivee || ''}`;
+
+                    document.getElementById('currentSpeed').textContent = line.vitesse || 0;
+                    const totalSeats     = Number(line.places_totales) || 40;
+                    const remainingSeats = Number(line.places_libres)  || 0;
+                    document.getElementById('placesBadge').textContent    = `${remainingSeats}/${totalSeats} places`;
+                    document.getElementById('busFullStatus').textContent  = remainingSeats === 0 ? 'Bus complet' : '';
+                    document.getElementById('busDetails').textContent     = `${totalSeats} places · ${line.heure_debut || '--'} → ${line.heure_fin || '--'}`;
+                    
+                    const isActive = line.en_service || line.service_active;
+                    updateServiceBanner(isActive);
+                    
+                    if (driverMap) {
+                        if (driverMarker) driverMarker.remove();
+                        const lat = parseFloat(line.latitude) || null;
+                        const lng = parseFloat(line.longitude) || null;
+                        const iconEl = document.createElement('div');
+                        iconEl.style.width = '40px';
+                        iconEl.style.height = '40px';
+                        iconEl.style.borderRadius = '50%';
+                        iconEl.style.background = '#2563eb';
+                        iconEl.style.display = 'flex';
+                        iconEl.style.alignItems = 'center';
+                        iconEl.style.justifyContent = 'center';
+                        iconEl.style.boxShadow = '0 4px 14px rgba(0,0,0,0.2)';
+                        iconEl.style.border = '2px solid white';
+                        iconEl.style.color = 'white';
+                        iconEl.style.fontSize = '12px';
+                        iconEl.style.fontWeight = '700';
+                        iconEl.textContent = line.numero || '';
+
+                        if (lat && lng) {
+                            driverMarker = new mapboxgl.Marker({ element: iconEl })
+                                .setLngLat([lng, lat])
+                                .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                                    `<b>Ligne ${line.numero}</b><br>${line.nom}<br>Vitesse: ${line.vitesse} km/h`
+                                ))
+                                .addTo(driverMap);
+                            driverMap.setCenter([lng, lat]);
+                            driverMap.setZoom(14);
+                        } else {
+                            driverMarker = new mapboxgl.Marker({ element: iconEl })
+                                .setLngLat([driverLocation.lng, driverLocation.lat])
+                                .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                                    `<b>Ligne ${line.numero}</b><br>${line.nom}<br>Position initiale indisponible`
+                                ))
+                                .addTo(driverMap);
+                        }
+                    }
+                    // Mettre à jour les cartes live immédiatement (sans attendre le setInterval)
+                    _applyLiveData(line);
+                    loadLineStops();
+                    loadTodayStats();
+                    loadReservations();
+                } else {
+                    document.getElementById('busNumber').textContent = '--';
+                    document.getElementById('routeName').textContent = 'Sélectionnez votre ligne';
+                    updateServiceBanner(false);
+                    showLineSelector();
+                }
+            } catch (e) { 
+                console.error('Erreur chargement ligne', e);
+            }
+        }
+
+        // ═══ MISE À JOUR DES CARTES LIVE (partagée) ═══
+        let _prevLibre = null;
+        function _applyLiveData(line) {
+            if (!line) return;
+            const isL1  = String(line.numero || '').toUpperCase() === 'L1';
+            const spd   = Math.round(parseFloat(line.vitesse) || 0);
+            const accel = isL1 && line.acceleration != null ? parseFloat(line.acceleration).toFixed(2) : null;
+            const temp  = isL1 && line.temperature  != null ? parseFloat(line.temperature).toFixed(1)  : null;
+            const libre = line.places_libres  != null ? parseInt(line.places_libres)  : 0;
+            const total = line.places_totales != null ? parseInt(line.places_totales) : 0;
+
+            document.getElementById('liveSpeed').textContent  = spd;
+            document.getElementById('livePlaces').textContent = libre;
+            document.getElementById('livePlacesTotal').textContent = `/ ${total} totales`;
+            document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString('fr-FR');
+            document.getElementById('placesBadge').textContent = `${libre}/${total} places`;
+            document.getElementById('busFullStatus').textContent = libre === 0 ? 'Bus complet' : '';
+
+            // Accel/temp : uniquement L1 (ESP32 physique)
+            const accelEl = document.getElementById('liveAccel');
+            const tempEl  = document.getElementById('liveTemp');
+            if (accel !== null) {
+                accelEl.textContent = accel;
+                accelEl.style.fontSize = '';
+            } else {
+                accelEl.textContent = 'N/A';
+                accelEl.style.fontSize = '1.25rem';
+                accelEl.title = 'Capteur disponible uniquement sur la ligne L1 (ESP32)';
+            }
+            if (temp !== null) {
+                tempEl.textContent = temp;
+                tempEl.style.fontSize = '';
+            } else {
+                tempEl.textContent = 'N/A';
+                tempEl.style.fontSize = '1.25rem';
+                tempEl.title = 'Capteur disponible uniquement sur la ligne L1 (ESP32)';
+            }
+
+            // Flash vert si les places ont changé (réservation reçue)
+            if (_prevLibre !== null && _prevLibre !== libre) {
+                const card = document.getElementById('livePlaces').closest('.rounded-2xl') || document.getElementById('livePlaces').parentElement;
+                if (card) {
+                    card.style.transition = 'background 0.3s';
+                    card.style.background = libre < _prevLibre ? '#fef9c3' : '#dcfce7';
+                    setTimeout(() => { card.style.background = ''; }, 1500);
+                }
+            }
+            _prevLibre = libre;
+
+            const lat = parseFloat(line.latitude), lng = parseFloat(line.longitude);
+            if (lat && lng && (Math.abs(lat) > 0.001 || Math.abs(lng) > 0.001)) {
+                if (driverMarker) driverMarker.setLngLat([lng, lat]);
+                if (isL1 && driverMap) driverMap.easeTo({ center: [lng, lat], duration: 800 });
+            }
+            if (driverMarker) {
+                driverMarker.setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                    `<b>Ligne ${line.numero}</b><br>Vitesse: <b>${spd} km/h</b><br>Places: <b>${libre}/${total}</b>`
+                ));
+            }
+        }
+
+        // ═══ DONNÉES TEMPS RÉEL — polling toutes les 5s ═══
+        async function refreshLiveData() {
+            if (!currentLigneId) return;
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'my_line', user_id: user.id, user_role: user.role })
+                });
+                const line = await res.json();
+                if (line) _applyLiveData(line);
+            } catch (e) { /* silencieux */ }
+        }
+
+        function updateServiceBanner(isActive) {
+            const indicator = document.getElementById('serviceIndicator');
+            const status = document.getElementById('serviceStatus');
+            const btn = document.getElementById('serviceBtn');
+            const mapContainer = document.getElementById('mapContainer');
+            
+            if (isActive) {
+                indicator.className = 'w-6 h-6 rounded-full bg-green-500';
+                status.textContent = '- En service';
+                status.className = 'ml-3 text-lg text-green-600 font-bold large-text';
+                btn.textContent = 'Arrêter';
+                btn.className = 'px-8 py-4 bg-red-600 text-white rounded-xl font-medium text-lg touch-target';
+                // Afficher la carte
+                if (mapContainer) mapContainer.style.display = 'block';
+                // Démarrer le suivi GPS
+                startGPSTracking();
+            } else {
+                indicator.className = 'w-6 h-6 rounded-full bg-red-500';
+                status.textContent = '- Service arrêté';
+                status.className = 'ml-3 text-lg text-red-600 font-bold large-text';
+                btn.textContent = 'Démarrer';
+                btn.className = 'px-8 py-4 bg-green-600 text-white rounded-xl font-medium text-lg touch-target';
+                // Masquer la carte
+                if (mapContainer) mapContainer.style.display = 'none';
+                // Arrêter le suivi GPS
+                stopGPSTracking();
+            }
+        }
+
+        async function toggleService() {
+            console.log('toggleService called, currentLigneId:', currentLigneId, 'currentLineData:', currentLineData);
+            if (!currentLigneId || !currentLineData) {
+                showPopup('Aucune ligne assignée. Contactez l\'administrateur.', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('serviceBtn');
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            
+            const isActive = currentLineData.en_service || currentLineData.service_active;
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'toggle_service', 
+                        bus_id: currentLineData.bus_id,
+                        ligne_id: currentLigneId,
+                        active: !isActive,
+                        user_id: user.id, 
+                        user_role: user.role 
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    currentLineData.en_service = data.active;
+                    currentLineData.service_active = data.active;
+                    updateServiceBanner(data.active);
+                    showPopup(data.active ? 'Service démarré' : 'Service arrêté', 'success');
+                }
+            } catch (e) {
+                showPopup('Erreur', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+
+        async function loadLineStops() {
+            if (!currentLigneId) return;
+            try {
+                const res = await fetch(API_URL + 'api.php?action=arrets');
+                const allStops = await res.json();
+                const lineStops = allStops.filter(stop => stop.ligne_id == currentLigneId)
+                    .sort((a, b) => a.ordre - b.ordre); // Trier par ordre
+
+                // Mettre à jour la liste des arrêts suivants
+                updateNextStopsList(lineStops);
+
+                // Afficher les marqueurs sur la carte si elle est visible
+                if (driverMap && document.getElementById('mapContainer').style.display !== 'none') {
+                    // Clear existing stop markers and route
+                    stopMarkers.forEach(marker => marker.remove());
+                    stopMarkers = [];
+                    if (driverMap.getLayer(routeLayerId)) {
+                        driverMap.removeLayer(routeLayerId);
+                    }
+                    if (driverMap.getSource(routeSourceId)) {
+                        driverMap.removeSource(routeSourceId);
+                    }
+
+                    const routeCoords = [];
+                    lineStops.forEach((stop, index) => {
+                        const stopEl = document.createElement('div');
+                        stopEl.style.width = '20px';
+                        stopEl.style.height = '20px';
+                        stopEl.style.borderRadius = '50%';
+                        stopEl.style.background = '#f59e0b'; // Orange for stops
+                        stopEl.style.border = '2px solid white';
+                        stopEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)';
+                        stopEl.style.display = 'flex';
+                        stopEl.style.alignItems = 'center';
+                        stopEl.style.justifyContent = 'center';
+                        stopEl.style.color = 'white';
+                        stopEl.style.fontSize = '10px';
+                        stopEl.style.fontWeight = '700';
+                        stopEl.textContent = (index + 1).toString();
+
+                        const marker = new mapboxgl.Marker({ element: stopEl })
+                            .setLngLat([stop.longitude, stop.latitude])
+                            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(
+                                `<strong>${stop.nom}</strong><br>Arrêt ${index + 1}/${lineStops.length}`
+                            ))
+                            .addTo(driverMap);
+                        stopMarkers.push(marker);
+                        if (stop.longitude && stop.latitude) {
+                            routeCoords.push([stop.longitude, stop.latitude]);
+                        }
+                    });
+
+                    if (routeCoords.length >= 2) {
+                        driverMap.addSource(routeSourceId, {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: routeCoords
+                                }
+                            }
+                        });
+                        driverMap.addLayer({
+                            id: routeLayerId,
+                            type: 'line',
+                            source: routeSourceId,
+                            layout: {
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            },
+                            paint: {
+                                'line-color': '#f59e0b',
+                                'line-width': 5,
+                                'line-opacity': 0.9
+                            }
+                        });
+                    }
+
+                    // Ajuster la vue pour montrer tous les arrêts
+                    if (lineStops.length > 0) {
+                        const bounds = new mapboxgl.LngLatBounds();
+                        lineStops.forEach(stop => bounds.extend([stop.longitude, stop.latitude]));
+                        if (driverMap.getLayer(routeLayerId) || stopMarkers.length) {
+                            driverMap.fitBounds(bounds, { padding: 40 });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Erreur chargement arrêts', e);
+            }
+        }
+
+        function updateNextStopsList(stops) {
+            const container = document.getElementById('nextStopsList');
+            if (stops.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Aucun arrêt défini</p>';
+                return;
+            }
+
+            container.innerHTML = stops.map((stop, index) => `
+                <div class="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-gray-800 dark:text-white">${stop.nom}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Arrêt ${index + 1}/${stops.length}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-block w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                                ${index + 1}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+    }
+
+        async function loadTodayStats() {
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'today_stats', user_id: user.id, user_role: user.role })
+                });
+                const stats = await res.json();
+                document.getElementById('todayPassengers').textContent = stats.tickets || 0;
+                document.getElementById('todayKm').textContent = stats.km || 0;
+                document.getElementById('todayTrips').textContent = stats.trips || 0;
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadReservations() {
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'my_reservations', user_id: user.id, user_role: user.role })
+                });
+                const reservations = await res.json();
+                const container = document.getElementById('reservationsList');
+                
+                if (reservations.length > 0) {
+                    container.innerHTML = reservations.map(r => `
+                        <div class="p-3 bg-gray-50 dark:bg-slate-700 rounded-xl flex justify-between items-center">
+                            <div>
+                                <p class="font-medium text-gray-800 dark:text-white">${r.prenom} ${r.nom}</p>
+                                <p class="text-sm text-gray-500">${r.heure_reservation}</p>
+                            </div>
+                            <span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Confirmé</span>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">Aucune réservation aujourd\'hui</p>';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // Suivi GPS
+        let gpsInterval = null;
+
+        function startGPSTracking() {
+            if (!driverMap || !currentLineData) return;
+            
+            // Créer le marqueur du chauffeur
+            if (!driverMarker) {
+                const markerEl = document.createElement('div');
+                markerEl.style.width = '32px';
+                markerEl.style.height = '32px';
+                markerEl.style.borderRadius = '50%';
+                markerEl.style.background = '#3b82f6';
+                markerEl.style.border = '3px solid white';
+                markerEl.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+                markerEl.innerHTML = '<svg class="w-5 h-5 text-white m-1" fill="currentColor" viewBox="0 0 20 20"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z"/></svg>';
+                
+                driverMarker = new mapboxgl.Marker({ element: markerEl })
+                    .setLngLat([driverLocation.lng, driverLocation.lat])
+                    .addTo(driverMap);
+            }
+            
+            // L1 = données ESP32 → ne jamais écraser avec le GPS téléphone
+            const _isL1 = String(currentLineData.numero || '').toUpperCase() === 'L1';
+
+            // Envoyer la position au serveur toutes les 5 secondes (sauf L1)
+            gpsInterval = setInterval(async () => {
+                if (navigator.geolocation && currentLineData) {
+                    navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                            const lat    = position.coords.latitude;
+                            const lng    = position.coords.longitude;
+                            const vitesse = position.coords.speed != null
+                                ? Math.round(position.coords.speed * 3.6)
+                                : 0;
+
+                            // L1 : l'ESP32 gère position et carte — ignorer le GPS téléphone
+                            if (_isL1) return;
+
+                            if (driverMarker) driverMarker.setLngLat([lng, lat]);
+                            if (driverMap)    driverMap.setCenter([lng, lat]);
+
+                            try {
+                                await fetch(API_URL + 'chauffeur_api.php', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        action: 'update_position',
+                                        bus_id: currentLineData.bus_id,
+                                        latitude: lat,
+                                        longitude: lng,
+                                        vitesse: vitesse,
+                                        user_id: user.id
+                                    })
+                                });
+                            } catch (e) {
+                                console.error('Erreur GPS serveur:', e);
+                            }
+                        },
+                        (error) => console.error('Erreur GPS:', error),
+                        { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+                    );
+                }
+            }, 5000);
+        }
+
+        function stopGPSTracking() {
+            if (gpsInterval) {
+                clearInterval(gpsInterval);
+                gpsInterval = null;
+            }
+            if (driverMarker) {
+                driverMarker.remove();
+                driverMarker = null;
+            }
+        }
+
+        // Fonctions des modales
+
+        async function submitTrip() {
+            if (!currentLigneId) {
+                showPopup('Aucune ligne assignée', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'add_trip', 
+                        bus_id: currentLineData?.bus_id || 0,
+                        ligne_id: currentLigneId,
+                        user_id: user.id,
+                        user_role: user.role
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup(data.message, 'success');
+                    closeTripModal();
+                    loadMyLine();
+                } else {
+                    showPopup(data.message || 'Erreur', 'error');
+                }
+            } catch (e) { showPopup('Erreur de connexion', 'error'); }
+        }
+
+        function showNextStopModal() {
+            if (!currentLigneId) {
+                showPopup('Aucune ligne assignée', 'error');
+                return;
+            }
+            loadStopsForLine();
+            document.getElementById('nextStopModal').classList.remove('hidden');
+            document.getElementById('nextStopModal').classList.add('flex');
+        }
+        function closeNextStopModal() {
+            document.getElementById('nextStopModal').classList.add('hidden');
+            document.getElementById('nextStopModal').classList.remove('flex');
+        }
+        async function loadStopsForLine() {
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'get_stops', 
+                        ligne_id: currentLigneId,
+                        user_id: user.id,
+                        user_role: user.role
+                    })
+                });
+                const stops = await res.json();
+                const select = document.getElementById('nextStopSelect');
+                select.innerHTML = '<option value="">Sélectionner un arrêt</option>' +
+                    stops.map(stop => `<option value="${stop.id}">${stop.nom}</option>`).join('');
+            } catch (e) {
+                showPopup('Erreur chargement arrêts', 'error');
+            }
+        }
+        async function submitNextStop() {
+            const stopId = document.getElementById('nextStopSelect').value;
+            if (!stopId) {
+                showPopup('Sélectionnez un arrêt', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'update_next_stop', 
+                        ligne_id: currentLigneId,
+                        next_stop_id: stopId,
+                        user_id: user.id,
+                        user_role: user.role
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showPopup('Prochain arrêt mis à jour', 'success');
+                    closeNextStopModal();
+                    loadMyLine();
+                } else {
+                    showPopup(data.message || 'Erreur', 'error');
+                }
+            } catch (e) {
+                showPopup('Erreur de connexion', 'error');
+            }
+        }
+
+        async function showLineSelector() {
+            document.getElementById('lineSelectorPanel').classList.remove('hidden');
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'available_lines', user_id: user.id, user_role: user.role })
+                });
+                const lines = await res.json();
+                const container = document.getElementById('availableLinesList');
+                if (!lines.length) {
+                    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Aucune ligne disponible. Contactez l\'administrateur.</p>';
+                    return;
+                }
+                container.innerHTML = lines.map(l => `
+                    <button onclick="selectLine(${l.bus_id})" class="w-full text-left p-4 bg-gray-50 dark:bg-slate-700 rounded-2xl hover:bg-blue-50 dark:hover:bg-slate-600 transition border-l-4" style="border-color:${l.couleur||'#3b82f6'}">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-gray-800 dark:text-white">Ligne ${l.numero} — ${l.nom}</div>
+                                <div class="text-sm text-gray-500 mt-0.5">${l.trajet_depart} → ${l.trajet_arrivee}</div>
+                                <div class="text-xs text-gray-400 mt-0.5">🚌 ${l.immatriculation} · ${l.places_totales} places</div>
+                            </div>
+                            <span class="text-blue-600 font-bold text-lg">→</span>
+                        </div>
+                    </button>
+                `).join('');
+            } catch(e) {
+                document.getElementById('availableLinesList').innerHTML = '<p class="text-red-400 text-sm text-center">Erreur de chargement</p>';
+            }
+        }
+
+        async function selectLine(busId) {
+            try {
+                const res = await fetch(API_URL + 'chauffeur_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'select_line', bus_id: busId, user_id: user.id, user_role: user.role })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('lineSelectorPanel').classList.add('hidden');
+                    showPopup('Ligne sélectionnée', 'success');
+                    loadMyLine();
+                } else {
+                    showPopup(data.message || 'Erreur', 'error');
+                }
+            } catch { showPopup('Erreur de connexion', 'error'); }
+        }
+
+        // Initialisation
+        initMap();
+        promptDriverLocation();
+        loadMyLine().then(() => {
+            // Premier refresh immédiatement après loadMyLine
+            refreshLiveData();
+        });
+        loadNotifications();
+
+        // Données temps réel toutes les 3s
+        setInterval(refreshLiveData, 3000);
+        // Recharge complète (arrêts, stats) toutes les 15s
+        setInterval(loadMyLine, 15000);
+    </script>
+
+    <!-- ═══ MODAL SCANNER QR ═══ -->
+    <div id="qrScanModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <!-- Header -->
+            <div class="flex justify-between items-center px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+                <h3 class="font-bold text-gray-800 dark:text-white text-lg">Scanner le QR étudiant</h3>
+                <button onclick="closeQrScanner()" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Caméra -->
+            <div id="qrCamSection" class="relative bg-black">
+                <video id="qrVideo" class="w-full" autoplay playsinline muted style="max-height:280px;object-fit:cover;"></video>
+                <canvas id="qrCanvas" class="hidden"></canvas>
+                <!-- Viseur -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="w-48 h-48 border-2 border-white rounded-xl opacity-70"></div>
+                </div>
+                <p id="qrScanStatus" class="absolute bottom-2 left-0 right-0 text-center text-white text-xs font-medium bg-black/40 py-1">Pointez la caméra vers le QR code</p>
+            </div>
+
+            <!-- Résultat scan -->
+            <div id="qrResult" class="hidden p-5">
+                <div id="qrResultContent"></div>
+                <div class="flex gap-3 mt-4">
+                    <button onclick="validateTicket()" id="qrValidateBtn" class="flex-1 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 hidden">
+                        ✓ Valider le ticket
+                    </button>
+                    <button onclick="resetQrScanner()" class="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-200">
+                        Scanner à nouveau
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ═══ QR SCANNER ═══
+    let _qrStream = null;
+    let _qrAnimId = null;
+    let _qrData   = null;
+    let _qrResId  = null;
+
+    function openQrScanner() {
+        document.getElementById('qrScanModal').classList.remove('hidden');
+        document.getElementById('qrResult').classList.add('hidden');
+        document.getElementById('qrCamSection').classList.remove('hidden');
+        _qrData = null; _qrResId = null;
+        startCamera();
+    }
+
+    function closeQrScanner() {
+        document.getElementById('qrScanModal').classList.add('hidden');
+        stopCamera();
+    }
+
+    function startCamera() {
+        if (!navigator.mediaDevices?.getUserMedia) {
+            document.getElementById('qrScanStatus').textContent = 'Caméra non disponible sur ce navigateur';
+            return;
+        }
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                _qrStream = stream;
+                const video = document.getElementById('qrVideo');
+                video.srcObject = stream;
+                video.play();
+                video.onloadedmetadata = () => { requestAnimationFrame(scanFrame); };
+            })
+            .catch(() => {
+                document.getElementById('qrScanStatus').textContent = 'Autoriser la caméra pour scanner';
+            });
+    }
+
+    function stopCamera() {
+        if (_qrAnimId) { cancelAnimationFrame(_qrAnimId); _qrAnimId = null; }
+        if (_qrStream) { _qrStream.getTracks().forEach(t => t.stop()); _qrStream = null; }
+        const video = document.getElementById('qrVideo');
+        video.srcObject = null;
+    }
+
+    function scanFrame() {
+        const video  = document.getElementById('qrVideo');
+        const canvas = document.getElementById('qrCanvas');
+        if (!video.videoWidth) { _qrAnimId = requestAnimationFrame(scanFrame); return; }
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+        if (code) {
+            onQrDetected(code.data);
+        } else {
+            _qrAnimId = requestAnimationFrame(scanFrame);
+        }
+    }
+
+    async function onQrDetected(rawData) {
+        stopCamera();
+        document.getElementById('qrCamSection').classList.add('hidden');
+        document.getElementById('qrResult').classList.remove('hidden');
+        const content = document.getElementById('qrResultContent');
+        content.innerHTML = '<div class="text-center py-3 text-gray-500">Vérification en cours...</div>';
+
+        let parsed = null;
+        try { parsed = JSON.parse(rawData); } catch(e) {}
+
+        if (!parsed || !parsed.res) {
+            content.innerHTML = '<div class="text-center text-red-600 font-semibold py-3">QR code non reconnu</div>';
+            return;
+        }
+
+        _qrResId = parsed.res;
+        _qrData  = rawData;
+
+        try {
+            const res = await fetch('../../backend/verify_reservation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qr_data: rawData })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const r = data.reservation;
+                const nom = `${r.user_prenom || ''} ${r.user_nom || ''}`.trim();
+                content.innerHTML = `
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-800 dark:text-white">${nom}</div>
+                            <div class="text-xs text-gray-500">${r.code_etudiant || r.user_email || ''}</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 space-y-1 text-sm">
+                        <div class="flex justify-between"><span class="text-gray-500">Ligne</span><span class="font-semibold">${r.ligne_numero} — ${r.ligne_nom}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">Réservé à</span><span class="font-semibold">${(r.heure_reservation||'').slice(0,5)}</span></div>
+                        ${r.arret_descente ? `<div class="flex justify-between"><span class="text-gray-500">Descente</span><span class="font-semibold">${r.arret_descente}</span></div>` : ''}
+                        <div class="flex justify-between"><span class="text-gray-500">Ticket</span><span class="font-mono text-xs">BUS-${String(r.id).padStart(6,'0')}</span></div>
+                    </div>`;
+                document.getElementById('qrValidateBtn').classList.remove('hidden');
+            } else {
+                const isUsed = data.message?.includes('déjà utilisé');
+                content.innerHTML = `
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 rounded-full ${isUsed ? 'bg-orange-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0">
+                            <svg class="w-6 h-6 ${isUsed ? 'text-orange-500' : 'text-red-600'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.07 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                        </div>
+                        <div class="font-bold ${isUsed ? 'text-orange-600' : 'text-red-600'}">${data.message}</div>
+                    </div>`;
+                document.getElementById('qrValidateBtn').classList.add('hidden');
+            }
+        } catch(e) {
+            content.innerHTML = '<div class="text-center text-red-600 font-semibold py-3">Erreur de connexion au serveur</div>';
+        }
+    }
+
+    async function validateTicket() {
+        if (!_qrResId) return;
+        const btn = document.getElementById('qrValidateBtn');
+        btn.disabled = true; btn.textContent = 'Validation...';
+        try {
+            const res = await fetch('../../backend/verify_reservation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reservation_id: _qrResId, mark_used: true })
+            });
+            const data = await res.json();
+            const content = document.getElementById('qrResultContent');
+            if (data.success || data.marked_used) {
+                content.innerHTML += '<div class="mt-3 py-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-center text-green-700 dark:text-green-400 font-bold text-sm">✓ Ticket validé — passager accepté à bord</div>';
+                btn.classList.add('hidden');
+                // Rafraîchir les places libres
+                setTimeout(() => { loadMyLine(); }, 500);
+            } else {
+                btn.disabled = false; btn.textContent = '✓ Valider le ticket';
+                content.innerHTML += `<div class="mt-2 text-red-600 text-sm text-center">${data.message}</div>`;
+            }
+        } catch(e) {
+            btn.disabled = false; btn.textContent = '✓ Valider le ticket';
+        }
+    }
+
+    function resetQrScanner() {
+        _qrData = null; _qrResId = null;
+        document.getElementById('qrResult').classList.add('hidden');
+        document.getElementById('qrResultContent').innerHTML = '';
+        document.getElementById('qrValidateBtn').classList.add('hidden');
+        document.getElementById('qrCamSection').classList.remove('hidden');
+        document.getElementById('qrScanStatus').textContent = 'Pointez la caméra vers le QR code';
+        startCamera();
+    }
+    </script>
+</body>
+</html>
